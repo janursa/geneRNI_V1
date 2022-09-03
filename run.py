@@ -1,84 +1,136 @@
-## grid search
-import newEstimator 
-import importlib
-import numpy as np
-importlib.reload(newEstimator)
-import sys
+# precision-accuracy
+from geneRNI import geneRNI as ni
+from geneRNI import tools
+from geneRNI import search_param
 import os
 import pandas as pd
 import numpy as np
-import copy
-import math
-import matplotlib.pyplot as plt
-import json
-import utils
-main_dir = "C:/Users/nourisa/Downloads/testProjs/omics"
-sys.path.insert(0,main_dir)
-specs = dict(
-    o_df_dir = os.path.join(main_dir,'data','original_omics.xlsx'),
-    df_dir = os.path.join(main_dir,'data','omics.csv'),
-    time = [1,2,3,4,7,8,9,10,11,14,21],
-    p_ID = 'Entry',  # The column name in the original data to be used as protein ID
-    c_tag = 'ctr_',
-    s_tag = 'mg_',
-    c_func = lambda t: 'ctr_' + str(t),  # The tag used in the tailored dataframe for control
-    s_func = lambda t: 'mg_' + str(t),  # The tag used in the tailored dataframe for sample
-    o_c_func = lambda t: 'LogLFQ intensity ' + str(t) + '_0',  # Func to extract the control data from the original database 
-    o_s_func = lambda t: 'LogLFQ intensity ' + str(t) + '_1',  # Func to extract the sample data from the original database
-    ee = 0.5,  # Threshold for log2FC to retain the data
-    min_s = 2,  # Min occurance in time series in order to retain the data  
-)
-## read the original data
-df = pd.read_csv('data/primary_omics.csv')
-# extract sig proteins
-df_sig = utils.sig_df(df, **specs)
-print('Sig proteins: {}'.format(len(df_sig)))
-# impute missing values: available techniques to try: interpolate, univariate and multivariate: https://scikit-learn.org/stable/modules/impute.html
-df_interp = df_sig.interpolate() 
-df_interp = utils.listwise_deletion(df_interp)
-print('Sig interpolated proteins: {}'.format(len(df_interp)))
+pd.options.mode.chained_assignment = None
 
-# reformat the data for time series
-df_target = df_interp
-time = specs['time']
-p_ID = specs['p_ID']
-data_ctr = np.array(df_target.loc[:,['ctr_'+str(day) for day in time]].values)
-data_mg = np.array(df_target.loc[:,['mg_'+str(day) for day in time]].values)
-(TS_data, time_points, decay_rates, gene_names) = \
-    [data_ctr.transpose(),data_mg.transpose()], [time,time],[],df_target[p_ID].tolist()
-print('n_exp n:',len(TS_data))
-print('n_time*n_genes',TS_data[0].shape)
+import importlib
+importlib.reload(ni)
+importlib.reload(tools)
+importlib.reload(search_param)
 
-# convert data to n_samples*n_genes format
-Xs,ys = newEstimator.process_data(TS_data, time_points, regulators = 'all')
-print('n_genes: ',len(ys),len(Xs))
-print('n_sample*n_genes : ',Xs[0].shape)
-print('n_sample for y : ',len(ys[0]))
-
-if __name__ == '__main__':
+# these are fixed 
+dir_main = 'C:/Users/nourisa/Downloads/testProjs/omics'
+def f_golden_dream(size, network): 
+    """ retreives golden links for dreams for given size and network """
+    dir_ = os.path.join(dir_main,f'dynGENIE3/dynGENIE3_data/dream4/gold_standards/{size}/DREAM4_GoldStandard_InSilico_Size{size}_{network}.tsv')
+    return pd.read_csv(dir_, names=['Regulator','Target','Weight'] ,sep='\t') 
+def f_data_dream(size, network): 
+    """ retreives train data for dreams for given size and network"""
+    (TS_data, time_points, SS_data) = pd.read_pickle(os.path.join(dir_main,f'dynGENIE3/dynGENIE3_data/dream4/data/size{size}_{network}_data.pkl'))
+    gene_names = [f'G{i}' for i in range(1,size+1)]
+    return TS_data, time_points, SS_data, gene_names
+def f_data_GRN(method, noise_level, network): 
+    """ retreives train data for GRNbenchmark for given specs"""
+    dir_data_benchmark = os.path.join(dir_main,'data/benchmark')
+    base = method+'_'+noise_level+'_'+network 
+    file_exp =  base+'_'+'GeneExpression.csv'
+    file_per =  base+'_'+'Perturbations.csv'
+    file_exp = os.path.join(dir_data_benchmark, file_exp)
+    file_per = os.path.join(dir_data_benchmark, file_per)
+    
+    exp_data = pd.read_csv(file_exp)
+    per_data = pd.read_csv(file_per)
+    
+    gene_names = exp_data['Row'].tolist()
+    exp_data = np.array([exp_data[col].tolist() for col in exp_data.columns if col != 'Row'])
+    per_data = [gene_names[per_data[col].tolist().index(-1)] for col in per_data.columns if col != 'Row']
+    return exp_data, per_data, gene_names
+def f_dir_links_dreams(size, network):
+    """ returns the dir to the stored links """
+    return os.path.join(dir_main,f'results/links_{size}_{network}.csv')
+def prepare_data_for_study(specs):
     param = dict(
         estimator_t = 'RF',
         # estimator_t = 'HGB',
-        n_estimators = 100,
-        # validation_fraction = None,
-        # loss='squared_error'
-    )
+        min_samples_leaf = 2, 
+        # criterion = 'absolute_error',
+        n_estimators = 100, 
+        n_jobs = 10
+    ) 
     param_grid = dict(
-    #     max_depth = [10,30],
-        n_estimators = np.arange(100, 400, 50),
-        alpha = np.arange(0, 1.1, .01),
-        # learning_rate = np.arange(0.01, 0.5, .05)
-    #     max_leaf_nodes=31, max_depth=None
-    #     min_samples_leaf
-    #     max_bins = np.arange(50, 255, 50)
+        # learning_rate = np.arange(0.001,.9, .02),
+        # min_samples_leaf = np.arange(2,10,1),
+        # max_depth = np.arange(4,10,1),
+        alpha = np.arange(0,1,.1),
     )
+    random_state_data = 0
+    random_state = None
+    bootstrap_fold = 3
+    test_size = 0
+    # reformat the data
+    if specs['study'] == 'dreams':
+        TS_data, time_points, SS_data, gene_names = f_data_dream(specs['size'], specs['network'])
+        Xs, ys = tools.process_data(TS_data=TS_data, SS_data=SS_data, gene_names=gene_names, time_points=time_points)
+        # Xs_train, Xs_test, ys_train, ys_test = tools.train_test_split(Xs, ys, test_size = test_size, random_state=random_state_data)
+        Xs_train = Xs #TODO: change it back to 
+        ys_train = ys
+
+        Xs_test = None
+        ys_test = None
+        
+        # Xs_train, ys_train = tools.resample(Xs_train, ys_train, n_samples = bootstrap_fold*len(ys[0]), random_state=random_state_data)
+        # Xs_test, ys_test = tools.resample(Xs_test, ys_test, n_samples = bootstrap_fold*len(ys[0]), random_state=random_state)
+        return gene_names, param, param_grid, Xs_train, Xs_test, ys_train, ys_test, f_dir_links_dreams, f_golden_dream
+
+    
+    elif specs['study'] == 'GRNbenchmark':
+        SS_data, KO, gene_names = f_data_GRN(specs['method'], specs['noise_level'], specs['network'])
+        TS_data = None
+        time_points = None
+        KO = None #TODO: make a use of original KO
+        Xs, ys = tools.process_data(TS_data=TS_data, SS_data=SS_data, gene_names=gene_names, time_points=time_points, KO=KO)
+        Xs_train, Xs_test, ys_train, ys_test = tools.train_test_split(Xs, ys, test_size = test_size, random_state=random_state_data)
+
+        # Xs_train, ys_train = tools.resample(Xs_train, ys_train, n_samples = bootstrap_fold*len(ys[0]), random_state=random_state_data)
+        # Xs_test, ys_test = tools.resample(Xs_test, ys_test, n_samples = bootstrap_fold*len(ys[0]), random_state=random_state)
+        return gene_names, param, param_grid, Xs_train, Xs_test, ys_train, ys_test, None, None
+
+
+    else:
+        raise ValueError('Define first')
+    
+    
+    
+
+if __name__ == '__main__':
+    
     specs = dict(
-        n_jobs = 50,
-        # cv = 5,
-    )
-    best_scores, best_params, best_ests = newEstimator.grid_search(Xs, ys, param, param_grid, **specs)
-    print('mean:', np.mean(best_scores), ' std:', np.std(best_scores))
-    with open('results/grid_search.txt', 'w') as f:
-        print(outs, file=f)
+        n_jobs = 10,
+        cv = 4,
+        # n_sample=100, # for random search
+        output_dir=os.path.join(dir_main,'results')
+        )
+    study = 'dreams'
+    # study = 'GRNbenchmark'
+    
+    if study == 'dreams': # dream as target study
+        size, network = 10, 1 # [10,100] [1-5]
+    
+        gene_names, param, param_grid, Xs_train, Xs_test, ys_train, ys_test, f_dir_links, f_golden_dream = prepare_data_for_study(dict(size=size, network=network, study=study))
+        # param search 
+        best_scores, best_params, best_ests, sampled_permts = search_param.rand_search(Xs=Xs_train, ys=ys_train, param=param, param_grid=param_grid, 
+                                                                                       **specs)
+        print(f'param search: best score, mean: {np.mean(best_scores)} std: {np.std(best_scores)}')
+        with open(f'results/param_search_dream_{size}_{network}.txt', 'w') as f:
+            print({'best_scores':best_scores, 'best_params':best_params}, file=f)
+    elif study == 'GRNbenchmark': # GRN as target study 
+        method, noise_level, network = 'GeneNetWeaver', 'LowNoise', 'Network1'
+        
+        gene_names, param, param_grid, Xs_train, Xs_test, ys_train, ys_test, f_dir_links, f_golden_dream = prepare_data_for_study(dict(method=method, noise_level=noise_level, network=network, study='GRNbenchmark'))
+        # param search 
+        # best_scores, best_params, best_ests, sampled_permts = search_param.rand_search(Xs=Xs_train, ys=ys_train, param=param, param_grid=param_grid, 
+        #                                                                                **specs)
+        best_scores, best_params, best_ests, sampled_permts = search_param.rand_search_partial(Xs=Xs_train, ys=ys_train, 
+                                                                                       n_genes=10, param=param, 
+                                                                                       param_grid=param_grid, 
+                                                                                       **specs)
+        print(f'param search: best score, mean: {np.mean(best_scores)} std: {np.std(best_scores)}')
+        with open(f'results/param_search_{method}_{noise_level}_{network}.txt', 'w') as f:
+            print({'best_scores':best_scores, 'best_params':best_params}, file=f)
+    
 
     

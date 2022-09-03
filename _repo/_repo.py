@@ -239,3 +239,73 @@ Si = sobol.analyze(problem, Y, print_to_console=True)
 
 # Print the first-order sensitivity indices
 print(Si['S1'])
+
+
+def sklearn_search(Xs, ys, param, param_grid, specs): # should use oob score when specified, for RF
+    '''  '''
+    n_genes = len(ys)
+    ests = [GeneEstimator(**param) for i in range(n_genes)]    
+
+    res = []
+    for est, X, y in zip(ests,Xs, ys):
+        # search = model_selection.GridSearchCV(est, param_grid, **specs)
+        search = model_selection.RandomSearchCV(est, param_grid, **specs)
+        res.append(search.fit(X,y))
+    best_scores = [r.best_score_ for r in res]
+    best_params = [r.best_params_ for r in res] 
+    best_fitted_est = [r.best_estimator_ for r in res]
+    return best_scores, best_params, best_fitted_est  
+
+    
+
+# test on 1 gene
+from geneRNI import geneRNI as ni
+from geneRNI import tools
+from geneRNI import search_param
+import os
+import pandas as pd
+import numpy as np
+pd.options.mode.chained_assignment = None
+
+
+import importlib
+importlib.reload(ni)
+importlib.reload(tools)
+importlib.reload(search_param)
+
+# these are fixed 
+dir_main = 'C:/Users/nourisa/Downloads/testProjs/omics'
+def f_golden_dream(size, network): 
+    """ retreives golden links for dreams for given size and network """
+    dir_ = os.path.join(dir_main,f'dynGENIE3/dynGENIE3_data/dream4/gold_standards/{size}/DREAM4_GoldStandard_InSilico_Size{size}_{network}.tsv')
+    return pd.read_csv(dir_, names=['Regulator','Target','Weight'] ,sep='\t') 
+def f_data_dream(size, network): 
+    """ retreives train data for dreams for given size and network"""
+    (TS_data, time_points, SS_data) = pd.read_pickle(os.path.join(dir_main,f'dynGENIE3/dynGENIE3_data/dream4/data/size{size}_{network}_data.pkl'))
+    gene_names = [f'G{i}' for i in range(1,size+1)]
+    return TS_data, time_points, SS_data, gene_names
+def f_dir_links(size, network):
+    """ returns the dir to the stored links """
+    return os.path.join(dir_main,f'results/links_{size}_{network}.csv')
+
+# get the data
+size = 10 # [10,100]
+network = 1 # [1-5]
+
+# reformat the data
+TS_data, time_points, SS_data, gene_names = f_data_dream(size, network)
+Xs, ys = tools.process_static_data(SS_data, gene_names=gene_names)
+Xs_train, Xs_test, ys_train, ys_test = tools.train_test_split(Xs, ys, test_size = 0.25)
+
+param = dict(
+    estimator_t = 'HGB',
+)
+
+est = ni.GeneEstimator(**param)
+est.fit(Xs_train[0], ys_train[0])
+print('train score: ', est.score(Xs_train[0], ys_train[0]))
+try:
+    print('oob score: ', est.est.oob_score_)
+except:
+    pass
+print('test score: ', est.score(Xs_test[0], ys_test[0]))

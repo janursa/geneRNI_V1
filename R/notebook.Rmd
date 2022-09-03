@@ -1,0 +1,22 @@
+runs GENIE3 and outputs the links
+```{r}
+library(GENIE3)
+set.seed(123) # For reproducibility of results
+# read data
+dir_main <- 'C:/Users/nourisa/Downloads/testProjs/omics'
+SS_data <- read.csv(file.path(dir_main,'data/test_data.csv'),header = FALSE)
+SS_data <- as.matrix(SS_data)
+rownames(SS_data) <- paste("G", 1:10, sep="")
+colnames(SS_data) <- paste("Sample", 1:31, sep="")
+# obtain the weights
+weightMat <- GENIE3(SS_data, treeMethod="RF", nTrees=500)
+linkList <- getLinkList(weightMat)
+colnames(linkList) <- list('Regulator','Target','Weight')
+rownames(linkList) <- NULL
+# head(linkList)
+write.table(linkList, file.path(dir_main, "results/test_links.csv"), append = FALSE, sep = ",", dec = ".",
+            row.names = FALSE, col.names = TRUE, quote=FALSE)
+
+```
+
+

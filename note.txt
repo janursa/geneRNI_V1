@@ -1,0 +1,14 @@
+degradation concept:
+assuming that alpha is .1 (/day), what estimator predicting? 
+- in time series: 
+	prediction = rate of change including degradation = dy/dt + a*y
+- in steady: 
+	prediction = decay amount = y + a*y
+
+
+how to combine static and dynamic data: 
+- case 1: dont include alpha in static data
+		- simply merge them
+
+implement KO in process data (both time series and static), outputlinks, 
+param search for a fraction of genes
