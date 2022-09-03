@@ -46,35 +46,27 @@ def prepare_data_for_study(specs):
     param = dict(
         estimator_t = 'RF',
         # estimator_t = 'HGB',
-        min_samples_leaf = 2, 
+        min_samples_leaf = 1, 
         # criterion = 'absolute_error',
         n_estimators = 100, 
         n_jobs = 10
     ) 
-    param_grid = dict(
-        # learning_rate = np.arange(0.001,.9, .02),
-        # min_samples_leaf = np.arange(2,10,1),
-        # max_depth = np.arange(4,10,1),
-        alpha = np.arange(0,1,.1),
-    )
-    random_state_data = 0
+    random_state_data = None
     random_state = None
     bootstrap_fold = 3
-    test_size = 0
+    test_size = None
     # reformat the data
     if specs['study'] == 'dreams':
         TS_data, time_points, SS_data, gene_names = f_data_dream(specs['size'], specs['network'])
         Xs, ys = tools.process_data(TS_data=TS_data, SS_data=SS_data, gene_names=gene_names, time_points=time_points)
-        # Xs_train, Xs_test, ys_train, ys_test = tools.train_test_split(Xs, ys, test_size = test_size, random_state=random_state_data)
-        Xs_train = Xs #TODO: change it back to 
-        ys_train = ys
-
-        Xs_test = None
-        ys_test = None
-        
+        if test_size is None:
+            Xs_train, Xs_test, ys_train, ys_test = Xs, None, ys, None
+        else:
+            Xs_train, Xs_test, ys_train, ys_test = tools.train_test_split(Xs, ys, test_size = test_size, random_state=random_state_data)
+ 
         # Xs_train, ys_train = tools.resample(Xs_train, ys_train, n_samples = bootstrap_fold*len(ys[0]), random_state=random_state_data)
         # Xs_test, ys_test = tools.resample(Xs_test, ys_test, n_samples = bootstrap_fold*len(ys[0]), random_state=random_state)
-        return gene_names, param, param_grid, Xs_train, Xs_test, ys_train, ys_test, f_dir_links_dreams, f_golden_dream
+        return dict(gene_names=gene_names, param=param, Xs_train=Xs_train, Xs_test=Xs_test, ys_train=ys_train, ys_test=ys_test, f_dir_links_dreams=f_dir_links_dreams, f_golden_dream=f_golden_dream)
 
     
     elif specs['study'] == 'GRNbenchmark':
@@ -83,34 +75,39 @@ def prepare_data_for_study(specs):
         time_points = None
         KO = None #TODO: make a use of original KO
         Xs, ys = tools.process_data(TS_data=TS_data, SS_data=SS_data, gene_names=gene_names, time_points=time_points, KO=KO)
-        Xs_train, Xs_test, ys_train, ys_test = tools.train_test_split(Xs, ys, test_size = test_size, random_state=random_state_data)
-
+        if test_size is None:
+            Xs_train, Xs_test, ys_train, ys_test = Xs, None, ys, None
+        else:
+            Xs_train, Xs_test, ys_train, ys_test = tools.train_test_split(Xs, ys, test_size = test_size, random_state=random_state_data)
+ 
         # Xs_train, ys_train = tools.resample(Xs_train, ys_train, n_samples = bootstrap_fold*len(ys[0]), random_state=random_state_data)
         # Xs_test, ys_test = tools.resample(Xs_test, ys_test, n_samples = bootstrap_fold*len(ys[0]), random_state=random_state)
-        return gene_names, param, param_grid, Xs_train, Xs_test, ys_train, ys_test, None, None
+        return dict(gene_names=gene_names, param=param, Xs_train=Xs_train, Xs_test=Xs_test, ys_train=ys_train, ys_test=ys_test)
 
 
     else:
         raise ValueError('Define first')
     
-    
-    
-
 if __name__ == '__main__':
-    
+    param_grid = dict(
+        # learning_rate = np.arange(0.001,.9, .02),
+        min_samples_leaf = np.arange(1,10,1),
+        max_depth = np.arange(10,50,5),
+        # alpha = np.arange(0,1,.1),
+    )
     specs = dict(
         n_jobs = 10,
         cv = 4,
         # n_sample=100, # for random search
         output_dir=os.path.join(dir_main,'results')
         )
-    study = 'dreams'
-    # study = 'GRNbenchmark'
+    # study = 'dreams'
+    study = 'GRNbenchmark'
     
     if study == 'dreams': # dream as target study
         size, network = 10, 1 # [10,100] [1-5]
     
-        gene_names, param, param_grid, Xs_train, Xs_test, ys_train, ys_test, f_dir_links, f_golden_dream = prepare_data_for_study(dict(size=size, network=network, study=study))
+        gene_names, param, Xs_train, Xs_test, ys_train, ys_test, f_dir_links, f_golden_dream = prepare_data_for_study(dict(size=size, network=network, study=study))
         # param search 
         best_scores, best_params, best_ests, sampled_permts = search_param.rand_search(Xs=Xs_train, ys=ys_train, param=param, param_grid=param_grid, 
                                                                                        **specs)
@@ -120,7 +117,7 @@ if __name__ == '__main__':
     elif study == 'GRNbenchmark': # GRN as target study 
         method, noise_level, network = 'GeneNetWeaver', 'LowNoise', 'Network1'
         
-        gene_names, param, param_grid, Xs_train, Xs_test, ys_train, ys_test, f_dir_links, f_golden_dream = prepare_data_for_study(dict(method=method, noise_level=noise_level, network=network, study='GRNbenchmark'))
+        gene_names, param, Xs_train, Xs_test, ys_train, ys_test, f_dir_links, f_golden_dream = prepare_data_for_study(dict(method=method, noise_level=noise_level, network=network, study='GRNbenchmark'))
         # param search 
         # best_scores, best_params, best_ests, sampled_permts = search_param.rand_search(Xs=Xs_train, ys=ys_train, param=param, param_grid=param_grid, 
         #                                                                                **specs)
