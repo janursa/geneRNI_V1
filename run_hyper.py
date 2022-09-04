@@ -104,6 +104,7 @@ if __name__ == '__main__':
         output_dir=os.path.join(dir_main,'results')
         )
     # study = 'dreams'
+    
     study = 'GRNbenchmark'
     
     if study == 'dreams': # dream as target study
