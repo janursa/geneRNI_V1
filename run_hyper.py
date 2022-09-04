@@ -48,11 +48,11 @@ def f_dir_links_dreams(size, network):
     return os.path.join(dir_main,f'results/links_{size}_{network}.csv')
 def prepare_data_for_study(specs):
     param = dict(
-        estimator_t = 'RF',
-        # estimator_t = 'HGB',
+        # estimator_t = 'RF',
+        estimator_t = 'HGB',
         min_samples_leaf = 1, 
         # criterion = 'absolute_error',
-        n_estimators = 100, 
+        # n_estimators = 100, 
         n_jobs = 10
     ) 
     random_state_data = None
@@ -94,9 +94,9 @@ def prepare_data_for_study(specs):
     
 if __name__ == '__main__':
     param_grid = dict(
-        # learning_rate = np.arange(0.001,.9, .02),
+        learning_rate = np.arange(0.001,.9, .02),
         min_samples_leaf = np.arange(1,10,1),
-        max_depth = np.arange(10,50,5),
+        # max_depth = np.arange(10,50,5),
         # alpha = np.arange(0,1,.1),
     )
     specs = dict(

@@ -400,3 +400,6 @@ def train_test_split(Xs, ys, test_size = 0.25, **specs):
     for i, (X, y) in enumerate(zip(Xs, ys)):
         Xs_train[i], Xs_test[i], ys_train[i], ys_test[i] = model_selection.train_test_split(X, y, test_size = test_size, **specs)
     return Xs_train, Xs_test, ys_train, ys_test
+def param_unique_average(param_unique):
+    average_param_unique = {key:int(np.mean([gene_param[key] for gene_param in param_unique])) for key in param_unique[0].keys()}
+    return average_param_unique

@@ -28,7 +28,7 @@ from sklearn import metrics
 # TODOC: pathos is used instead of multiprocessing, which is an external dependency. 
 #        This is because multiprocessing uses pickle that has problem with lambda function.
 
-def network_inference(Xs, ys, param, param_unique = None, Xs_test=None, ys_test=None, param_unique_average=False):
+def network_inference(Xs, ys, param, param_unique = None, Xs_test=None, ys_test=None):
     """ Determines links of network inference
     If the ests are given, use them instead of creating new ones.
 
@@ -38,12 +38,10 @@ def network_inference(Xs, ys, param, param_unique = None, Xs_test=None, ys_test=
     
     if param_unique == None:
         ests = [GeneEstimator(**param) for i in range(n_genes)]
+    elif isinstance(param_unique,dict):
+        ests = [GeneEstimator(**{**param,**param_unique}) for i in range(n_genes)]  
     else: 
-        if param_unique_average: # unique param is given for a selection of genes
-            average_param_unique = {key:np.mean([gene_param[key] for gene_param in param_unique]) for key in param_unique[0].keys()}
-            ests = [GeneEstimator(**{**param,**average_param_unique}) for i in range(n_genes)]  
-        else:
-            ests = [GeneEstimator(**{**param,**param_unique[i]}) for i in range(n_genes)]  
+        ests = [GeneEstimator(**{**param,**param_unique[i]}) for i in range(n_genes)]  
     fits = [ests[i].fit(X,y) for i, (X, y) in enumerate(zip(Xs,ys))]
     
     # train score
