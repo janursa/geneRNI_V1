@@ -14,8 +14,10 @@ importlib.reload(tools)
 importlib.reload(search_param)
 
 # these are fixed 
+
 dir_main = dir_main = pathlib.Path(__file__).parent.resolve()
 # dir_main = '/gpfs/home/nourisa/omics_estimator'
+
 def f_golden_dream(size, network): 
     """ retreives golden links for dreams for given size and network """
     dir_ = os.path.join(dir_main,f'dynGENIE3/dynGENIE3_data/dream4/gold_standards/{size}/DREAM4_GoldStandard_InSilico_Size{size}_{network}.tsv')
@@ -104,12 +106,13 @@ if __name__ == '__main__':
         output_dir=os.path.join(dir_main,'results')
         )
     # study = 'dreams'
-    
+
     study = 'GRNbenchmark'
     
     if study == 'dreams': # dream as target study
         size, network = 10, 1 # [10,100] [1-5]
     
+
         info = prepare_data_for_study(dict(size=size, network=network, study=study))
         # param search 
         best_scores, best_params, best_ests, sampled_permts = search_param.rand_search(Xs=info['Xs_train'], ys=info['ys_train'], 
@@ -121,6 +124,7 @@ if __name__ == '__main__':
     elif study == 'GRNbenchmark': # GRN as target study 
         method, noise_level, network = 'GeneNetWeaver', 'LowNoise', 'Network1'
         
+
         info = prepare_data_for_study(dict(method=method, noise_level=noise_level, network=network, study='GRNbenchmark'))
         # param search 
         # best_scores, best_params, best_ests, sampled_permts = search_param.rand_search(Xs=Xs_train, ys=ys_train, param=param, param_grid=param_grid, 
@@ -132,4 +136,3 @@ if __name__ == '__main__':
         with open(f'results/param_search_{method}_{noise_level}_{network}.txt', 'w') as f:
             print({'best_scores':best_scores, 'best_params':best_params}, file=f)
     
-
