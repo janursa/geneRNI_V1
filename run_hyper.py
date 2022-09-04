@@ -47,18 +47,41 @@ def f_dir_links_dreams(size, network):
     """ returns the dir to the stored links """
     return os.path.join(dir_main,f'results/links_{size}_{network}.csv')
 def prepare_data_for_study(specs):
-    param = dict(
-        # estimator_t = 'RF',
-        estimator_t = 'HGB',
-        min_samples_leaf = 1, 
-        # criterion = 'absolute_error',
-        # n_estimators = 100, 
-        n_jobs = 10
-    ) 
-    random_state_data = None
+    if specs['estimator_t'] == 'RF':
+        param = dict(
+            estimator_t = 'RF',
+            min_samples_leaf = 1, 
+            # criterion = 'absolute_error',
+            n_estimators = 100, 
+            # n_jobs = 10
+        )
+        param_grid = dict(
+            min_samples_leaf = np.arange(1,10,1),
+            max_depth = np.arange(10,50,5),
+            alpha = np.arange(0,1,.1),
+        )
+        test_size = None
+    elif specs['estimator_t'] =='HGB':
+        param = dict(
+            estimator_t = 'HGB',
+            min_samples_leaf = 2, 
+            # criterion = 'absolute_error',
+            # max_iter = 10,
+            # max_iter = 50,
+
+        ) 
+        param_grid = dict(
+            learning_rate = np.arange(0.001,.2, .02),
+            min_samples_leaf = np.arange(1,30,2),
+            max_iter = np.arange(20,200,10),
+        )
+        test_size = .25
+    else:
+        raise ValueError('Define')
+    random_state_data = 0
     random_state = None
     bootstrap_fold = 3
-    test_size = None
+    
     # reformat the data
     if specs['study'] == 'dreams':
         TS_data, time_points, SS_data, gene_names = f_data_dream(specs['size'], specs['network'])
@@ -70,9 +93,8 @@ def prepare_data_for_study(specs):
  
         # Xs_train, ys_train = tools.resample(Xs_train, ys_train, n_samples = bootstrap_fold*len(ys[0]), random_state=random_state_data)
         # Xs_test, ys_test = tools.resample(Xs_test, ys_test, n_samples = bootstrap_fold*len(ys[0]), random_state=random_state)
-        return dict(gene_names=gene_names, param=param, Xs_train=Xs_train, Xs_test=Xs_test, ys_train=ys_train, ys_test=ys_test, f_dir_links_dreams=f_dir_links_dreams, f_golden_dream=f_golden_dream)
+        return dict(gene_names=gene_names, param=param, param_grid=param_grid, Xs_train=Xs_train, Xs_test=Xs_test, ys_train=ys_train, ys_test=ys_test, f_dir_links_dreams=f_dir_links_dreams, f_golden_dream=f_golden_dream)
 
-    
     elif specs['study'] == 'GRNbenchmark':
         SS_data, KO, gene_names = f_data_GRN(specs['method'], specs['noise_level'], specs['network'])
         TS_data = None
@@ -88,17 +110,11 @@ def prepare_data_for_study(specs):
         # Xs_test, ys_test = tools.resample(Xs_test, ys_test, n_samples = bootstrap_fold*len(ys[0]), random_state=random_state)
         return dict(gene_names=gene_names, param=param, Xs_train=Xs_train, Xs_test=Xs_test, ys_train=ys_train, ys_test=ys_test)
 
-
     else:
         raise ValueError('Define first')
     
 if __name__ == '__main__':
-    param_grid = dict(
-        learning_rate = np.arange(0.001,.9, .02),
-        min_samples_leaf = np.arange(1,10,1),
-        # max_depth = np.arange(10,50,5),
-        # alpha = np.arange(0,1,.1),
-    )
+    
     specs = dict(
         n_jobs = 10,
         cv = 4,
@@ -108,29 +124,26 @@ if __name__ == '__main__':
     # study = 'dreams'
 
     study = 'GRNbenchmark'
+    estimator_t = 'RF'
     
     if study == 'dreams': # dream as target study
         size, network = 10, 1 # [10,100] [1-5]
-    
-
-        info = prepare_data_for_study(dict(size=size, network=network, study=study))
+        info = prepare_data_for_study(dict(size=size, network=network, study=study, estimator_t=estimator_t))
         # param search 
         best_scores, best_params, best_ests, sampled_permts = search_param.rand_search(Xs=info['Xs_train'], ys=info['ys_train'], 
-                                                                                       param=info['param'], param_grid=param_grid, 
+                                                                                       param=info['param'], param_grid=info['param_grid'], 
                                                                                        **specs)
         print(f'param search: best score, mean: {np.mean(best_scores)} std: {np.std(best_scores)}')
         with open(f'results/param_search_dream_{size}_{network}.txt', 'w') as f:
             print({'best_scores':best_scores, 'best_params':best_params}, file=f)
     elif study == 'GRNbenchmark': # GRN as target study 
         method, noise_level, network = 'GeneNetWeaver', 'LowNoise', 'Network1'
-        
-
-        info = prepare_data_for_study(dict(method=method, noise_level=noise_level, network=network, study='GRNbenchmark'))
+        info = prepare_data_for_study(dict(method=method, noise_level=noise_level, network=network, study='GRNbenchmark', estimator_t=estimator_t))
         # param search 
         # best_scores, best_params, best_ests, sampled_permts = search_param.rand_search(Xs=Xs_train, ys=ys_train, param=param, param_grid=param_grid, 
         #                                                                                **specs)
         best_scores, best_params, best_ests, sampled_permts = search_param.rand_search_partial(Xs=info['Xs_train'], ys=info['ys_train'],
-                                                                                       n_genes=10, param=info['param'], param_grid=param_grid,
+                                                                                       n_genes=10, param=info['param'], param_grid=info['param_grid'],
                                                                                        **specs)
         print(f'param search: best score, mean: {np.mean(best_scores)} std: {np.std(best_scores)}')
         with open(f'results/param_search_{method}_{noise_level}_{network}.txt', 'w') as f:

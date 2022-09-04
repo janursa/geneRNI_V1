@@ -67,7 +67,8 @@ def network_inference(Xs, ys, param, param_unique = None, Xs_test=None, ys_test=
     #     print('Variance based feature importance')
     #     links_v = [ests[i].compute_feature_importances_tree() for i,_ in enumerate(ys)]
     # links = links_p
-    links = [ests[i].compute_feature_importances_tree() for i,_ in enumerate(ys)]
+    # links = [ests[i].compute_feature_importances_tree() for i,_ in enumerate(ys)]
+    links = None
     return ests, train_scores, links, oob_scores, test_scores
 class GeneEstimator(base.BaseEstimator,base.RegressorMixin):
     """The docstring for a class should summarize its behavior and list the public methods and instance variables """
