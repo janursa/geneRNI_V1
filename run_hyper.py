@@ -6,6 +6,7 @@ from geneRNI import search_param
 import os
 import pandas as pd
 import numpy as np
+import sys
 pd.options.mode.chained_assignment = None
 
 import importlib
@@ -108,15 +109,16 @@ def prepare_data_for_study(specs):
  
         # Xs_train, ys_train = tools.resample(Xs_train, ys_train, n_samples = bootstrap_fold*len(ys[0]), random_state=random_state_data)
         # Xs_test, ys_test = tools.resample(Xs_test, ys_test, n_samples = bootstrap_fold*len(ys[0]), random_state=random_state)
+
         return dict(gene_names=gene_names, param=param, param_grid=param_grid, Xs_train=Xs_train, Xs_test=Xs_test, ys_train=ys_train, ys_test=ys_test)
+
 
     else:
         raise ValueError('Define first')
     
 if __name__ == '__main__':
-    
     specs = dict(
-        n_jobs = 10,
+        n_jobs = int(sys.argv[1]),
         cv = 4,
         # n_sample=100, # for random search
         output_dir=os.path.join(dir_main,'results')
@@ -124,6 +126,7 @@ if __name__ == '__main__':
     # study = 'dreams'
 
     study = 'GRNbenchmark'
+
     # estimator_t = 'RF'
     estimator_t = 'HGB'
     
