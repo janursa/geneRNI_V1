@@ -175,7 +175,7 @@ def rand_search(Xs,ys, param, param_grid, n_jobs = 1, n_sample=60, output_dir=No
 def rand_search_partial(Xs, ys, param, param_grid, n_genes, n_jobs = 1, n_sample=60, output_dir=None, **specs):
     """Conducts random search on hyper-parameters, only partially on n_genes, randomly selected from all genes"""
     permts = permutation(param_grid,output_dir)
-    print(f'stats: genes {n_genes} permts {len(permts)}  threads {n_jobs}')
+    print(f'partial rand search on {n_genes} genes with permts {len(permts)}  threads {n_jobs}')
     if len(permts) < n_sample:
         sampled_permts = permts
     else:
@@ -186,7 +186,7 @@ def rand_search_partial(Xs, ys, param, param_grid, n_genes, n_jobs = 1, n_sample
     sampled_permts_sorted = {key:[item[key] for item in sampled_permts] for key in param_grid.keys()}
     print(f'Running {len(sampled_permts)} samples randomly')
     # choose n genes randomly from all genes
-    choice = [random.randint(0,len(ys)) for i in range(n_genes)]
+    choice = [random.randint(0,len(ys)-1) for i in range(n_genes)]
     best_scores, best_params, best_ests = search(Xs[choice], ys[choice], param, param_grid, permts=sampled_permts, n_jobs=n_jobs, **specs)
     return best_scores, best_params, best_ests, sampled_permts_sorted
 
