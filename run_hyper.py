@@ -31,7 +31,7 @@ if __name__ == '__main__':
         out_data = tools.Benchmark.process_data_dreams(size=size, network=network, estimator_t=estimator_t)
         results_dir = f'results/param_search_dream_{size}_{network}.txt'
     elif study == 'GRNbenchmark':
-        method, noise_level, network = 'GeneNetWeaver', 'LowNoise', 'Network1'
+        method, noise_level, network = 'GeneNetWeaver', 'HighNoise', 'Network1'
         out_data = tools.Benchmark.process_data_GRNbenchmark(method, noise_level, network, estimator_t=estimator_t)
         results_dir = f'results/param_search_GRNbenchmark_{method}_{noise_level}_{network}.txt'
     else:

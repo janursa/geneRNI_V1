@@ -350,14 +350,14 @@ class Settings:
                 estimator_t = 'RF',
                 min_samples_leaf = 1, 
                 # criterion = 'absolute_error',
-                n_estimators = 100, 
+                n_estimators = 200, 
                 alpha = .9,
                 n_jobs = 10
             )
             param_grid = dict(
                 min_samples_leaf = np.arange(1,10,1),
-                max_depth = np.arange(10,50,5),
-                alpha = np.arange(0,1,.1),
+                # max_depth = np.arange(10,50,5),
+                # alpha = np.arange(0,1,.1),
             )
             test_size = None
         elif estimator_t == 'HGB':
@@ -377,7 +377,7 @@ class Settings:
             test_size = 0.25
         else:
             raise ValueError('Define')
-        random_state_data = 0
+        random_state_data = None
         random_state = None
         bootstrap_fold = None
         return types_.DefaultParamType(param, param_grid, test_size, bootstrap_fold, random_state, random_state_data)
