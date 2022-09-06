@@ -25,5 +25,7 @@ if __name__ == '__main__':
 	    out_data = tools.Benchmark.process_data_GRNbenchmark(method, noise_level, network, estimator_t=estimator_t)
 	else:
 	    raise ValueError('Define')
-
+	start = time.time()
 	out_network = ni.network_inference(Xs=out_data.Xs_train, ys=out_data.ys_train, param=out_default.param, Xs_test=out_data.Xs_test, ys_test=out_data.ys_test)
+	end = time.time()
+	print('lapsed time ', (end-start))

@@ -29,9 +29,11 @@ if __name__ == '__main__':
     if study == 'dreams': # dream as target study
         size, network = 10, 1 # [10,100] [1-5]
         out_data = tools.Benchmark.process_data_dreams(size=size, network=network, estimator_t=estimator_t)
+        results_dir = f'results/param_search_dream_{size}_{network}.txt'
     elif study == 'GRNbenchmark':
         method, noise_level, network = 'GeneNetWeaver', 'LowNoise', 'Network1'
         out_data = tools.Benchmark.process_data_GRNbenchmark(method, noise_level, network, estimator_t=estimator_t)
+        results_dir = f'results/param_search_GRNbenchmark_{method}_{noise_level}_{network}.txt'
     else:
         raise ValueError('Define')
     out_defaults = tools.Settings.default(estimator_t=estimator_t)
@@ -39,6 +41,6 @@ if __name__ == '__main__':
                                                                                    param=out_defaults.param, param_grid=out_defaults.param_grid, 
                                                                                        **specs)
     print(f'param search: best score, mean: {np.mean(best_scores)} std: {np.std(best_scores)}')
-    with open(f'results/param_search_dream_{size}_{network}.txt', 'w') as f:
-        print({'best_scores':best_scores, 'best_params':best_params}, file=f)
-   
+
+    with open(results_dir, 'w') as f:
+            print({'best_scores':best_scores, 'best_params':best_params}, file=f)

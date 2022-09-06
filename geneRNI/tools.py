@@ -352,7 +352,7 @@ class Settings:
                 # criterion = 'absolute_error',
                 n_estimators = 100, 
                 alpha = .9,
-                # n_jobs = 10
+                n_jobs = 10
             )
             param_grid = dict(
                 min_samples_leaf = np.arange(1,10,1),
