@@ -6,9 +6,12 @@ __all__ = ['a', 'b', 'c']
 __version__ = '0.1'
 __author__ = 'Jalil Nourisa'
 
+import os
 import time
+import sys
 import numpy as np
 import itertools
+import pathlib
 from pathos.pools import ParallelPool as Pool
 
 from sklearn import tree
@@ -17,6 +20,11 @@ from sklearn import base
 from sklearn import utils
 from sklearn import inspection
 from sklearn import metrics
+
+dir_main = os.path.join(pathlib.Path(__file__).parent.resolve(),'..')
+sys.path.insert(0, dir_main)
+
+from geneRNI import tools
 
 
 #TODO: lag h: can be more than 1. can be in the format of hour/day 
@@ -28,7 +36,7 @@ from sklearn import metrics
 # TODOC: pathos is used instead of multiprocessing, which is an external dependency. 
 #        This is because multiprocessing uses pickle that has problem with lambda function.
 
-def network_inference(Xs, ys, param, param_unique = None, Xs_test=None, ys_test=None):
+def network_inference(Xs, ys, gene_names, param, param_unique = None, Xs_test=None, ys_test=None, verbose=True):
     """ Determines links of network inference
     If the ests are given, use them instead of creating new ones.
 
@@ -46,17 +54,18 @@ def network_inference(Xs, ys, param, param_unique = None, Xs_test=None, ys_test=
     
     # train score
     train_scores = [ests[i].score(X,y) for i, (X, y) in enumerate(zip(Xs,ys))]
-    print(f'\nnetwork inference: train score, mean: {np.mean(train_scores)} std: {np.std(train_scores)}')
+    tools.verboseprint(verbose, f'\nnetwork inference: train score, mean: {np.mean(train_scores)} std: {np.std(train_scores)}')
+    # print(f'\nnetwork inference: train score, mean: {np.mean(train_scores)} std: {np.std(train_scores)}')
     # oob score
     if param['estimator_t'] == 'RF':
         oob_scores = [est.est.oob_score_ for est in ests]  
-        print(f'network inference: oob score (only RF), mean: {np.mean(oob_scores)} std: {np.std(oob_scores)}')      
+        tools.verboseprint(verbose,f'network inference: oob score (only RF), mean: {np.mean(oob_scores)} std: {np.std(oob_scores)}')      
     else:
         oob_scores = None
     # test score
     if Xs_test is not None or ys_test is not None:
         test_scores = [ests[i].score(X,y) for i, (X, y) in enumerate(zip(Xs_test,ys_test))]
-        print(f'network inference: test score, mean: {np.mean(test_scores)} std: {np.std(test_scores)}')
+        tools.verboseprint(verbose,f'network inference: test score, mean: {np.mean(test_scores)} std: {np.std(test_scores)}')
     else:
         test_scores = None
     # feature importance
@@ -67,9 +76,10 @@ def network_inference(Xs, ys, param, param_unique = None, Xs_test=None, ys_test=
     #     print('Variance based feature importance')
     #     links_v = [ests[i].compute_feature_importances_tree() for i,_ in enumerate(ys)]
     # links = links_p
-    # links = [ests[i].compute_feature_importances_tree() for i,_ in enumerate(ys)]
-    links = None
-    return ests, train_scores, links, oob_scores, test_scores
+    links = [ests[i].compute_feature_importances_tree() for i,_ in enumerate(ys)]
+    links_df = tools.Links.format(links, gene_names)
+    # links = None
+    return ests, train_scores, links_df, oob_scores, test_scores
 class GeneEstimator(base.BaseEstimator,base.RegressorMixin):
     """The docstring for a class should summarize its behavior and list the public methods and instance variables """
     def __init__(self,estimator_t, alpha = 0, **params):

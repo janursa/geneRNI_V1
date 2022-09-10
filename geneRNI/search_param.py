@@ -190,36 +190,3 @@ def rand_search_partial(Xs, ys, param, param_grid, n_genes, n_jobs = 1, n_sample
     best_scores, best_params, best_ests = search(Xs[choice], ys[choice], param, param_grid, permts=sampled_permts, n_jobs=n_jobs, **specs)
     return best_scores, best_params, best_ests, sampled_permts_sorted
 
-def plot(best_params,best_scores, priors = None, samples = None):
-    """plots the results of grid search"""
-    #TODO: check the inputs: samples should have the same keys as priors, best_params
-    
-    if priors is not None:
-        priors = {key:list(set([item[key] for item in priors['permts']])) for key in priors['permts'][0].keys()}
-        samples = {key:list(set([item[key] for item in samples['permts']])) for key in samples['permts'][0].keys()}
-
-
-    def normalize(xx, priors):
-        xx = {key:np.array(list(set(values))) for key,values in xx.items()}
-        if priors is not None:
-            return {key: (values-min(priors[key]))/(max(priors[key])-min(priors[key])) for key,values in xx.items()}
-        else:
-            return {key: (values-min(values))/(max(values)-min(values)) for key,values in xx.items()}
-    # sort and normalize
-    sorted_best_params = {key: np.array([item[key] for item in best_params]) for key in best_params[0].keys()}
-    sorted_best_params_n = normalize(sorted_best_params, priors)
-    
-    # plot best params as box plot
-    fig, axs = plt.subplots(1,2, tight_layout = True, figsize = (10,5),  gridspec_kw={'width_ratios': [3, 1]})
-    axs[0].boxplot(sorted_best_params_n.values(), showfliers= True, labels=sorted_best_params_n.keys())
-    axs[0].set_ylabel('Normalized quantity')
-    axs[0].set_title('Estimated params stats')
-    # plot samples as scatter 
-    if samples is not None:
-        samples_n = normalize(samples, priors)
-        for i, (key, values) in enumerate(samples_n.items(),1): 
-            axs[0].scatter([i for j in range(len(values))], values)
-    axs[1].boxplot(best_scores, showfliers= True)
-    axs[1].set_ylabel('Score')
-    axs[1].set_title('Best scores distribution')
-    axs[1].set_xticklabels([])

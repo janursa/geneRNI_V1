@@ -28,16 +28,20 @@ sys.path.insert(0, dir_main)
 
 from geneRNI import types_
 
+def verboseprint(flag, message):
+    if flag:
+        print(message)
+
+
 class Links:
     @staticmethod
-    def output(links, gene_names, file_name, regulators='all', maxcount='all', KO=None, 
+    def format(links, gene_names, regulators='all', maxcount='all', KO=None, 
                     regulator_tag='Regulator', target_tag='Target', weight_tag='Weight', sign_tag='Sign'):
         
-        """Gets the ranked list of (directed) regulatory links.
+        """Gets the regulatory links in a narray and converts it to a df.
         
         Parameters
         ----------
-        
         
         gene_names: list of strings, optional
             List of length p, where p is the number of rows/columns in VIM, containing the names of the genes. The i-th item of gene_names must correspond to the i-th row/column of VIM. When the gene names are not provided, the i-th gene is named Gi.
@@ -51,18 +55,12 @@ class Links:
             Writes only the first maxcount regulatory links of the ranked list. When maxcount is set to 'all', all the regulatory links are written.
             default: 'all'
             
-        file_name: string, optional
-            Writes the ranked list of regulatory links in the file file_name.
-            default: None
-            
-            
         
         Returns
         -------
         
-        The list of regulatory links, ordered according to the edge score. Auto-regulations do not appear in the list. Regulatory links with a score equal to zero are randomly permuted. In the ranked list of edges, each line has format:
-            
-            regulator   target gene     score of edge
+        A df with the format:            
+            Regulator   Target     Weight    Sign
         """
         
         # Check input arguments     
@@ -94,8 +92,6 @@ class Links:
         if maxcount != 'all' and not isinstance(maxcount,int):
             raise ValueError('input argument maxcount must be "all" or a positive integer')
             
-        if file_name is not None and not isinstance(file_name,str):
-            raise ValueError('input argument file_name must be a string')
 
         # Get the indices of the candidate regulators
         if regulators == 'all':
@@ -132,7 +128,6 @@ class Links:
         if isinstance(maxcount,int) and maxcount >= 0 and maxcount < nInter:
             nToWrite = maxcount
             
-        
         regs = []
         targs = []
         scores = []
@@ -149,22 +144,36 @@ class Links:
         df[target_tag] = targs
         df[weight_tag] = scores
         df[sign_tag] = ''
-        df.to_csv(file_name, index=False) 
+        # print(df)
+        df = Links.sort(df, gene_names)
+        return df
+    @staticmethod
+    def output(links_df, file_name):
+        if file_name is not None and not isinstance(file_name,str):
+            raise ValueError('input argument file_name must be a string')
+        links_df.to_csv(file_name, index=False) 
     @staticmethod
     def sort(links, sorted_gene_names, regulator_tag ='Regulator', target_tag ='Target', weight_tag='Weight'):
-        """ Sorts links for each gene 
-        links --  Target Regulator Weight <- database
-        sorted_gene_names -- how the outout weights should be sorted
+        """ Sorts links in based on gene numbers. The output looks like:
+            Regulator    Target     Weight
+            G1             G2         0.5
+            G1             G3         0.8
+        links --  Target Regulator Weight as a database
+        sorted_gene_names -- gene names sorted
         """
         #TODO: missing genes
-        weights = {}
-        for gene in sorted_gene_names:
+  
+        for i, gene in enumerate(sorted_gene_names):
             df_gene = links.loc[links[regulator_tag] == gene]
             sorted_gene_names_a = [x for x in sorted_gene_names if x != gene]
             df_gene.loc[:,target_tag] = pd.Categorical(df_gene[target_tag], sorted_gene_names_a)
             df_gene_sorted = df_gene.sort_values(target_tag)
-            weights[gene] = df_gene_sorted[weight_tag].tolist()    
-        return weights 
+            if i==0:
+                sorted_links = df_gene_sorted
+            else:
+                sorted_links = pd.concat([sorted_links,df_gene_sorted],axis=0, ignore_index=True)
+
+        return sorted_links 
 class Data:
     @staticmethod
     def process_time_series(TS_data, time_points, gene_names, regulators='all' , KO=None):
@@ -262,7 +271,7 @@ class Data:
             ys.append(y)
         return Xs,ys
     @staticmethod
-    def process(TS_data = None, SS_data = None, time_points = None, gene_names=None, regulators = 'all', KO = None): 
+    def process(TS_data = None, SS_data = None, time_points = None, gene_names=None, regulators = 'all', KO = None, verbose=True): 
         """ Reformats the raw data for both static and dynamic analysis
 
         For time series data, TS_data should be in n_exp*n_time*n_genes format. For For static analysis, 
@@ -293,10 +302,10 @@ class Data:
         # TODO: add KO to time series data
         if TS_data is not None:
             Xs_d, ys_d = Data.process_time_series(TS_data, time_points, gene_names, regulators, KO)
-            print(f'dynamic data: ngenes: {len(ys_d)}, nsamples: {len(ys_d[0])}, n regulators: {len(Xs_d[0][0])}')
+            verboseprint(verbose, f'dynamic data: ngenes: {len(ys_d)}, nsamples: {len(ys_d[0])}, n regulators: {len(Xs_d[0][0])}')
         if SS_data is not None:
             Xs_s, ys_s = Data.process_static(SS_data, gene_names, regulators, KO)
-            print(f'static data: ngenes: {len(ys_s)}, nsamples: {len(ys_s[0])}, n regulators: {len(Xs_s[0][0])}')
+            verboseprint(verbose, f'static data: ngenes: {len(ys_s)}, nsamples: {len(ys_s[0])}, n regulators: {len(Xs_s[0][0])}')
 
         # combine static and dynamic data
         if TS_data is not None and SS_data is not None:
@@ -356,8 +365,8 @@ class Settings:
             )
             param_grid = dict(
                 min_samples_leaf = np.arange(1,10,1),
-                # max_depth = np.arange(10,50,5),
-                # alpha = np.arange(0,1,.1),
+                max_depth = np.arange(10,50,5),
+                alpha = np.arange(0,1,.1),
             )
             test_size = None
         elif estimator_t == 'HGB':
@@ -384,19 +393,19 @@ class Settings:
 class Benchmark:
     @staticmethod
     def f_golden_dream(size, network): 
-        """ retreives golden links for dreams for given size and network """
-        dir_ = os.path.join(dir_main,f'benchmark/dream4/gold_standards/{size}/DREAM4_GoldStandard_InSilico_Size{size}_{network}.tsv')
+        """ retreives golden links for dream4 for given size and network """
+        dir_ = os.path.join(dir_main,f'data/dream4/gold_standards/{size}/DREAM4_GoldStandard_InSilico_Size{size}_{network}.tsv')
         return pd.read_csv(dir_, names=['Regulator','Target','Weight'] ,sep='\t') 
     @staticmethod
     def f_data_dream(size, network): 
-        """ retreives train data for dreams for given size and network"""
-        (TS_data, time_points, SS_data) = pd.read_pickle(os.path.join(dir_main,f'benchmark/dream4/data/size{size}_{network}_data.pkl'))
+        """ retreives train data for dream4 for given size and network"""
+        (TS_data, time_points, SS_data) = pd.read_pickle(os.path.join(dir_main,f'data/dream4/data/size{size}_{network}_data.pkl'))
         gene_names = [f'G{i}' for i in range(1,size+1)]
         return TS_data, time_points, SS_data, gene_names
     @staticmethod
     def f_data_GRN(method, noise_level, network): 
         """ retreives train data for GRNbenchmark for given specs"""
-        dir_data_benchmark = os.path.join(dir_main,'benchmark/GRNbenchmark')
+        dir_data_benchmark = os.path.join(dir_main,'data/GRNbenchmark')
         base = method+'_'+noise_level+'_'+network 
         file_exp =  base+'_'+'GeneExpression.csv'
         file_per =  base+'_'+'Perturbations.csv'
@@ -411,45 +420,145 @@ class Benchmark:
         per_data = [gene_names[per_data[col].tolist().index(-1)] for col in per_data.columns if col != 'Row']
         return exp_data, per_data, gene_names
     @staticmethod
-    def process_data(TS_data, SS_data, time_points, gene_names, estimator_t):
-        Xs, ys = Data.process(TS_data=TS_data, SS_data=SS_data, gene_names=gene_names, time_points=time_points)
+    def process_data(TS_data, SS_data, time_points, gene_names, estimator_t, **specs):
+        Xs, ys = Data.process(TS_data=TS_data, SS_data=SS_data, gene_names=gene_names, time_points=time_points, **specs)
         pp =  Settings.default(estimator_t)
-        out_data = Data.train_test_split(Xs, ys, test_size = pp.test_size, random_state=pp.random_state_data)
+        out_data = Data.train_test_split(Xs, ys, test_size = pp.test_size, random_state=pp.random_state_data, **specs)
         # Xs_train, ys_train = Data.resample(Xs_train, ys_train, n_samples = bootstrap_fold*len(ys[0]), random_state=random_state_data)
         # Xs_test, ys_test = Data.resample(Xs_test, ys_test, n_samples = bootstrap_fold*len(ys[0]), random_state=random_state)
         return out_data
     @staticmethod
-    def process_data_dreams(size, network, estimator_t):
+    def process_data_dream4(size, network, estimator_t, **specs):
         TS_data, time_points, SS_data, gene_names = Benchmark.f_data_dream(size, network)
-        return Benchmark.process_data(TS_data, SS_data, time_points, gene_names, estimator_t)
+        return Benchmark.process_data(TS_data, SS_data, time_points, gene_names, estimator_t, **specs)
     @staticmethod
-    def process_data_GRNbenchmark(method, noise_level, network, estimator_t):
+    def process_data_GRNbenchmark(method, noise_level, network, estimator_t, **specs):
         SS_data, KO, gene_names = Benchmark.f_data_GRN(method, noise_level, network)
         return Benchmark.process_data(None, SS_data, None, gene_names, estimator_t)
 class GOF: 
     """Goodness of fit"""
     @staticmethod
-    def calculate_PR(gene_names, scores, tests, details = True):
+    def boxplot_scores_groupOfgroup(scores_stack_stack, tags=None, titles=None):
+        """plots scores as a box plot for a group of groups (e.g. size*network)"""
+        n=len(scores_stack_stack)
+        fig, axes = plt.subplots(1,n, tight_layout = True, figsize=(n*5,4))
+        for i, scores_stack in enumerate(scores_stack_stack):
+            if n == 1:
+                ax = axes
+            else:
+                ax = axes[i]
+            ax.boxplot(scores_stack, showfliers= True)
+            ax.set_ylabel('Score')
+            ax.set_xlabel('Network')
+            if titles is not None:
+                ax.set_title(titles[i])
+            if tags is not None:
+                ax.set_xticks(range(1,len(tags)+1))
+                ax.set_xticklabels(tags)
+    @staticmethod
+    def boxplot_scores_group(scores_stack, tags=None, title=None, xlabel=''):
+        """plots scores as a box plot for a set"""
+        fig, ax = plt.subplots(1,1, tight_layout = True)
+        ax.boxplot(scores_stack, showfliers= True)
+        ax.set_ylabel('Score')
+        ax.set_xlabel(xlabel)
+        ax.set_title(title)
+        if tags is not None:
+            ax.set_xticks(range(1,len(tags)+1))
+            ax.set_xticklabels(tags)
+    @staticmethod
+    def boxplot_scores_single(scores):
+        """plots scores as a box plot"""        
+        fig, ax = plt.subplots(1,1, tight_layout = True)
+        ax.boxplot(scores, showfliers= True)
+        ax.set_ylabel('Score')
+        ax.set_title('Best scores distribution')
+        ax.set_xticklabels([])
+    @staticmethod
+    def boxplot_params(best_params, priors = None, samples = None):
+        """plots the results of grid search"""
+        #TODO: check the inputs: samples should have the same keys as priors, best_params
+        
+        if priors is not None:
+            priors = {key:list(set([item[key] for item in priors['permts']])) for key in priors['permts'][0].keys()}
+            samples = {key:list(set([item[key] for item in samples['permts']])) for key in samples['permts'][0].keys()}
+
+
+        def normalize(xx, priors):
+            xx = {key:np.array(list(set(values))) for key,values in xx.items()}
+            if priors is not None:
+                return {key: (values-min(priors[key]))/(max(priors[key])-min(priors[key])) for key,values in xx.items()}
+            else:
+                return {key: (values-min(values))/(max(values)-min(values)) for key,values in xx.items()}
+        # sort and normalize
+        sorted_best_params = {key: np.array([item[key] for item in best_params]) for key in best_params[0].keys()}
+        sorted_best_params_n = normalize(sorted_best_params, priors)
+        
+        # plot best params as box plot
+        fig, axs = plt.subplots(1,2, tight_layout = True, figsize = (10,5),  gridspec_kw={'width_ratios': [3, 1]})
+        axs[0].boxplot(sorted_best_params_n.values(), showfliers= True, labels=sorted_best_params_n.keys())
+        axs[0].set_ylabel('Normalized quantity')
+        axs[0].set_title('Estimated params stats')
+        # plot samples as scatter 
+        if samples is not None:
+            samples_n = normalize(samples, priors)
+            for i, (key, values) in enumerate(samples_n.items(),1): 
+                axs[0].scatter([i for j in range(len(values))], values)
+    @staticmethod
+    def barplot_PR_group(PR_stack, tags=None, title=None, xlabel=''):
+        """Plot the values of PR for each network"""
+        fig, ax = plt.subplots(1,1, tight_layout = True)
+        ax.bar(range(1,len(PR_stack)+1), PR_stack)
+        ax.set_ylabel('Score')
+        ax.set_xlabel(xlabel)
+        ax.set_title(title)
+        if tags is not None:
+            ax.set_xticks(range(1,len(tags)+1))
+            ax.set_xticklabels(tags)
+    @staticmethod
+    def barplot_PR_groupOfgroup(PR_stack_stack, tags=None, titles=None, xlabel='Network'):
+        """plots PR as a bar plot for a group of groups (e.g. size*network)"""
+        n=len(PR_stack_stack)
+        fig, axes = plt.subplots(1,n, tight_layout = True, figsize=(n*5,4))
+        for i, PR_stack in enumerate(PR_stack_stack):
+            if n == 1:
+                ax = axes
+            else:
+                ax = axes[i]
+            ax.bar(range(1,len(PR_stack)+1),PR_stack)
+            ax.set_ylabel('Score')
+            ax.set_xlabel(xlabel)
+            if titles is not None:
+                ax.set_title(titles[i])
+            if tags is not None:
+                ax.set_xticks(range(1,len(tags)+1))
+                ax.set_xticklabels(tags)
+    @staticmethod
+    def calculate_PR(gene_names, links, golden_links, details = True, regulator_tag='Regulator', target_tag='Target', weight_tag='Weight'):
         """ Compute precision recall 
      
-        scores -- Weights of the links. n dimentional array, one row for each gene
-        tests -- golden links
+        links -- sorted links as G1->G2, in a df format
+        golden_links -- sorted golden links as G1->G2, in a df format
         details -- if True, detailed precision recall is calculated. If false, only the average for overall network is outputed
      
         """
+        # break the array into n parts, one for each gene
+        scores = np.array(np.split(np.array(links[weight_tag].tolist()), len(gene_names))) # links
+        tests = np.array(np.split(np.array(golden_links[weight_tag].tolist()), len(gene_names))) # golden
+
         precision = dict()
         recall = dict()
         average_precision = dict()
         if details:
             for gene, score, test in zip(gene_names,scores,tests):
-                precision[gene], recall[gene], _ = metrics.precision_recall_curve(score, test)
-                average_precision[gene] = metrics.average_precision_score(score, test)
+                precision[gene], recall[gene], _ = metrics.precision_recall_curve(test, score)
+                average_precision[gene] = metrics.average_precision_score(test, score)
 
             precision["micro"], recall["micro"], _ = metrics.precision_recall_curve(
-                scores.ravel(), tests.ravel()
+                tests.ravel(), scores.ravel()
             )
-        average_precision_overall = metrics.average_precision_score(scores, tests, average="micro")
-        return precision, recall, average_precision, average_precision_overall 
+        average_precision['micro'] = metrics.average_precision_score(tests, scores, average="micro")
+        return precision, recall, average_precision, average_precision['micro'] 
     @staticmethod
     def PR_curve_gene(gene_names, recall, precision, average_precision):
         """ Plots PR curve for the given genes as well as the average PR combining all genes """

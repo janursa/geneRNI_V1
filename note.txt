@@ -10,5 +10,8 @@ how to combine static and dynamic data:
 - case 1: dont include alpha in static data
 		- simply merge them
 
-implement KO in process data (both time series and static), outputlinks, 
-param search for a fraction of genes
+evaluate KO in dream4
+evaluate KO in GRNbenchmark
+understand the metrics used in dream4
+
+In addition to this main challenge participants also had the option of taking part in a bonus-round challenge aimed at assessing a method’s ability to predict system-wide behavior in response to new genetic perturbations, the double knock-out challenge. For each network participants were also presented with twenty double knock-out perturbations (in which the transcription rate ofa pair of genes was set to zero simultaneously), and asked to predict the steady-state expression of all other genes in response to the perturbation.

@@ -14,4 +14,4 @@ module purge
 
 module load applications/python/3.8
 # setenv OMP_NUM_THREADS 20
-python3 run_hyper.py 80
+python3 scripts/tune_dream4.py 80
