@@ -1,1 +1,1 @@
-# MSC_Mg_omics
+# geneRNI

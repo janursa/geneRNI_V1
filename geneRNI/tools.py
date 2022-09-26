@@ -392,16 +392,39 @@ class Settings:
         return types_.DefaultParamType(param, param_grid, test_size, bootstrap_fold, random_state, random_state_data)
 class Benchmark:
     @staticmethod
-    def f_golden_dream(size, network): 
+    def f_data_dream5(network): 
+        """ retreives train data for dream5 for network"""
+        data = pd.read_csv(os.path.join(dir_main,f'data/dream5/trainingData/net{network}_expression_data.tsv'), sep='\t')
+        transcription_factors = pd.read_csv(os.path.join(dir_main,f'data/dream5/trainingData/net{network}_transcription_factors.tsv'), sep='\t', header=None )
+        gene_names = data.columns.tolist()
+        SS_data = data.values
+        return SS_data, gene_names, transcription_factors[0].tolist()
+    @staticmethod
+    def f_golden_dream4(size, network): 
         """ retreives golden links for dream4 for given size and network """
         dir_ = os.path.join(dir_main,f'data/dream4/gold_standards/{size}/DREAM4_GoldStandard_InSilico_Size{size}_{network}.tsv')
         return pd.read_csv(dir_, names=['Regulator','Target','Weight'] ,sep='\t') 
     @staticmethod
-    def f_data_dream(size, network): 
+    def f_data_dream4(size, network): 
         """ retreives train data for dream4 for given size and network"""
         (TS_data, time_points, SS_data) = pd.read_pickle(os.path.join(dir_main,f'data/dream4/data/size{size}_{network}_data.pkl'))
         gene_names = [f'G{i}' for i in range(1,size+1)]
         return TS_data, time_points, SS_data, gene_names
+    @staticmethod
+    def f_data_melanogaster(): 
+        """ retreives train data for melanogaster"""
+        (TS_data, time_points, genes, TFs, alphas) = pd.read_pickle(os.path.join(dir_main,f'data/real_networks/data/drosophila_data.pkl'))
+        return TS_data, time_points, genes, TFs, alphas
+    @staticmethod
+    def f_data_ecoli(): 
+        """ retreives train data for ecoli"""
+        (TS_data, time_points, genes, TFs, alphas) = pd.read_pickle(os.path.join(dir_main,f'data/real_networks/data/ecoli_data.pkl'))
+        return TS_data, time_points, genes, TFs, alphas
+    @staticmethod
+    def f_data_cerevisiae(): 
+        """ retreives train data for yeast"""
+        (TS_data, time_points, genes, TFs, alphas) = pd.read_pickle(os.path.join(dir_main,f'data/real_networks/data/cerevisiae_data.pkl'))
+        return TS_data, time_points, genes, TFs, alphas
     @staticmethod
     def f_data_GRN(method, noise_level, network): 
         """ retreives train data for GRNbenchmark for given specs"""
