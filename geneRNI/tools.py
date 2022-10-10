@@ -452,7 +452,7 @@ class Benchmark:
         return out_data
     @staticmethod
     def process_data_dream4(size, network, estimator_t, **specs):
-        TS_data, time_points, SS_data, gene_names = Benchmark.f_data_dream(size, network)
+        TS_data, time_points, SS_data, gene_names = Benchmark.f_data_dream4(size, network)
         return Benchmark.process_data(TS_data, SS_data, time_points, gene_names, estimator_t, **specs)
     @staticmethod
     def process_data_GRNbenchmark(method, noise_level, network, estimator_t, **specs):
