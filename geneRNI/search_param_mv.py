@@ -27,7 +27,7 @@ def evaluate_single(est, X, y, permt, cv = 4):
     #     use_oob_flag = True
     # else:
     #     use_oob_flag = False
-    use_oob_flag = True
+    use_oob_flag = True #TODO: needs fixing
     
     # est = GeneEstimator(**param)
     params = est.get_params()

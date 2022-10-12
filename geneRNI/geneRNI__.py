@@ -80,9 +80,9 @@ def network_inference(Xs, ys, gene_names, param, param_unique = None, Xs_test=No
     links_df = tools.Links.format(links, gene_names)
     # links = None
     return ests, train_scores, links_df, oob_scores, test_scores
-class GeneEstimator(base.BaseEstimator,base.RegressorMixin):
+class GenesEstimator(base.BaseEstimator,base.RegressorMixin):
     """The docstring for a class should summarize its behavior and list the public methods and instance variables """
-    def __init__(self,estimator_t, alpha = 0, **params):
+    def __init__(self, estimator=None, alphas = 0, **params):
         '''args should all be keyword arguments with a default value -> kwargs should be all the keyword params of all regressors with values'''
         '''they should not be documented under the “Attributes” section, but rather under the “Parameters” section for that estimator.'''
         '''every keyword argument accepted by __init__ should correspond to an attribute on the instance'''
@@ -90,56 +90,87 @@ class GeneEstimator(base.BaseEstimator,base.RegressorMixin):
         '''algorithm-specific unit tests,'''
         # self.alpha = alpha
         self.params = params
-        self.estimator_t = estimator_t
-        self.alpha = alpha
-        self.est = None
+        self.estimator = estimator
+        self.alphas = alphas
+        self.ests = []
         # self._required_parameters = () #estimators also need to declare any non-optional parameters to __init__ in the
-    def fit(self, X, y):
+    def apply_alpha(self, ys):
+
+        if self.alphas == 0:
+            ys = [[ys[i,j](0) for j in range(ys.shape[1])] for i in range(ys.shape[0])]
+        else:
+            ys = [[ys[i,j](self.alphas[j]) for j in range(ys.shape[1])] for i in range(ys.shape[0])]
+        
+        return np.array(ys)
+    def check_X_y(self, X, ys):
+        utils.check_array(X)
+        utils.indexable(X)
+        for i in range(ys.shape[1]):
+            y = ys[:,i]
+            utils.check_X_y(X,y)
+            utils.indexable(y)
+    def fit(self, X, ys):
         """ fit X to y
         X -- Array-like of shape (n_samples, n_features)
-        y -- Array-like of shape (n_samples,)
-        kwargs -- Optional data-dependent parameters
+        ys, where y -- Array-like of shape (n_samples,)
         """
         '''Attributes that have been estimated from the data must always have a name ending with trailing underscore'''
         '''The estimated attributes are expected to be overridden when you call fit a second time.'''
         
         # apply alpha to y
-        y = [y_i(self.alpha) for y_i in y]
-        utils.check_array(X)
-        utils.check_X_y(X,y)
-        utils.indexable(X)
-        utils.indexable(y)
-        if self.estimator_t != 'HGB': #check this. https://scikit-learn.org/stable/developers/utilities.html#developers-utils
-            utils.assert_all_finite(X)
-            utils.assert_all_finite(y)
-        self.X_ = X
-        self.y_ = y
-        if self.estimator_t == 'RF':
-            self.est = ensemble.RandomForestRegressor(oob_score = True,**self.params)
-        elif self.estimator_t == 'HGB':
-            self.est = ensemble.HistGradientBoostingRegressor(**self.params)
-        else:
-            raise ValueError('Define estimator_t')
-        self.est.fit(X,y)
-        return self
-    def predict(self,X):
-        """ """
-        # apply alpha to y
-        # y = [y_i(self.alpha) for y_i in y] 
-        utils.validation.check_is_fitted(self.est)
-        return self.est.predict(X)
-    def score(self, X, y): 
-        """ """
-        # apply alpha to y
-        y = [y_i(self.alpha) for y_i in y]
-        utils.validation.check_is_fitted(self.est)
-        utils.check_array(X)
-        utils.check_X_y(X,y)
-        utils.indexable(X)
-        utils.indexable(y)
-        # print(self.est.score(X,y))
-        return self.est.score(X,y)
+        ys = self.apply_alpha(ys)
+        self.check_X_y(X,ys)
 
+        for i in range(ys.shape[1]): #TODO: this might need to go to set_params
+            # if self.params is not None:
+            #     if utils.indexable(self.params): # seperate parameter sets are given for genes
+            #         params = self.params[i]
+            #     else:
+            #         params = self.params
+            # else:
+            #     params = {}
+            params = {}
+            if self.estimator is None:
+                est = ensemble.RandomForestRegressor(oob_score = True,**params)
+            else:
+                est = self.estimator(**params)
+            self.ests.append(est)
+
+        for i in range(ys.shape[1]):
+            y = ys[:,i]
+            self.ests[i].fit(X,y)
+        self.X_ = X
+        self.y_ = ys
+
+        return self
+    def check_is_fitted(self):
+        for est in self.ests:
+            utils.validation.check_is_fitted(est)
+    def predict(self,Xs):
+        """ """ 
+        utils.validation.check_is_fitted(self.ests)
+
+        return [est.predict(X) for est,X in zip(self.ests,Xs)]
+    def score(self, X, ys): 
+        """ """
+        # apply alpha to y
+        ys = self.apply_alpha(ys)
+        self.check_X_y(X,ys)
+        self.check_is_fitted()
+
+        return [self.ests[i].score(X,ys[:,i]) for i in range(ys.shape[1])]
+
+    # def score_cv(self,X,ys, cv=4):
+    #     """cross validation score. """
+    #     est.set_params(**params)
+    #     if use_oob_flag:
+    #         fit = est.fit(X,y)
+    #         score = est.est.oob_score_
+    #     else:
+    #         cv_a = model_selection.ShuffleSplit(n_splits=cv, test_size=(1/cv)) 
+    #         scores = model_selection.cross_val_score(est, X, y, cv=cv_a)
+    #         score = np.mean(scores)
+            
     def compute_feature_importances_tree(self): 
         """Computes variable importances from a trained tree-based model. Deprecated"""
         
@@ -187,7 +218,7 @@ class GeneEstimator(base.BaseEstimator,base.RegressorMixin):
         the __init__ parameters of the estimator, together with their values. 
 
         """
-        return {'estimator_t': self.estimator_t, 'alpha': self.alpha, **self.params}
+        return {'estimator': self.estimator, 'alphas': self.alphas, **self.params}
     def set_params(self, **parameters):
         """ """
         for parameter, value in parameters.items():
@@ -195,10 +226,10 @@ class GeneEstimator(base.BaseEstimator,base.RegressorMixin):
         return self
     def _more_tags(self):
         """ """
-        if self.estimator_t == 'HGB':
-            allow_nan = True 
-        else:
-            allow_nan = False
+        # if self.estimator_t == 'HGB':
+        #     allow_nan = True 
+        # else:
+        #     allow_nan = False
         return {'requires_fit': True, 'allow_nan': allow_nan, 'multioutput': True, 
             'requires_y': True,}
 
