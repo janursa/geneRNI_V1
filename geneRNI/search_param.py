@@ -152,6 +152,8 @@ def permutation(param_grid, output_dir=None):
     for value in list(itertools.product(*values)):
         permts.append({tag: i for tag, i in zip(tags, value)})
     if output_dir is not None:
+        if not os.path.isdir(output_dir):
+            os.makedirs(output_dir)
         with open(os.path.join(output_dir, 'permts.txt'), 'w') as f:
             print({'permts': permts}, file=f)
     return permts
