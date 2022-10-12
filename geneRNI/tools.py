@@ -384,6 +384,7 @@ class Settings:
 
     @staticmethod
     def default(estimator_t):
+        test_size = None
         if estimator_t == 'RF':
             param = dict(
                 estimator_t='RF',
@@ -398,7 +399,6 @@ class Settings:
                 max_depth=np.arange(10, 50, 5),
                 alpha=np.arange(0, 1, .1),
             )
-            test_size = None
         elif estimator_t == 'HGB':
             param = dict(
                 estimator_t='HGB',
@@ -414,8 +414,15 @@ class Settings:
                 max_iter=np.arange(20, 200, 10),
             )
             test_size = 0.25
+        elif estimator_t == 'ridge':
+            param = dict(
+                estimator_t='ridge',
+            )
+            param_grid = dict(
+                alpha=10. ** np.arange(-3, 4)
+            )
         else:
-            raise ValueError('Define')
+            raise ValueError(f'Unsupported estimator {estimator_t}')
         random_state_data = None
         random_state = None
         bootstrap_fold = None

@@ -18,6 +18,7 @@ from sklearn import ensemble
 from sklearn import inspection
 from sklearn import tree
 from sklearn import utils
+from sklearn.linear_model import Ridge
 
 from geneRNI import tools
 
@@ -96,7 +97,7 @@ class GeneEstimator(base.BaseEstimator, base.RegressorMixin):
         self.params: dict = params
         self.estimator_t: base.BaseEstimator = estimator_t
         self.alpha: float = alpha
-        self.est = None
+        self.est: Optional[base.BaseEstimator] = None
         # self._required_parameters = () #estimators also need to declare any non-optional parameters to __init__ in the
 
     def fit(self, X: np.ndarray, y: np.ndarray) -> 'GeneEstimator':
@@ -123,6 +124,8 @@ class GeneEstimator(base.BaseEstimator, base.RegressorMixin):
             self.est = ensemble.RandomForestRegressor(oob_score = True,**self.params)
         elif self.estimator_t == 'HGB':
             self.est = ensemble.HistGradientBoostingRegressor(**self.params)
+        elif self.estimator_t == 'ridge':
+            self.est = Ridge(**self.params)
         else:
             raise ValueError('Define estimator_t')
         self.est.fit(X, y)
