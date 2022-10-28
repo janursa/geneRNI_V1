@@ -83,7 +83,7 @@ def network_inference(Xs, ys, gene_names, param, param_unique=None, Xs_test=None
     return ests, train_scores, links_df, oob_scores, test_scores
 
 
-class GeneEstimator(base.BaseEstimator, base.RegressorMixin):
+class GeneEstimator(base.RegressorMixin):
     """The docstring for a class should summarize its behavior and list the public methods and instance variables """
 
     def __init__(self, estimator_t: base.BaseEstimator, alpha: float = 0., **params):
@@ -99,7 +99,7 @@ class GeneEstimator(base.BaseEstimator, base.RegressorMixin):
         self.estimator_t: base.BaseEstimator = estimator_t
         self.alpha: float = alpha
         self.est: Optional[base.BaseEstimator] = None
-        # self._required_parameters = () #estimators also need to declare any non-optional parameters to __init__ in the
+        # self._required_parameters = ('allow_nan') #estimators also need to declare any non-optional parameters to __init__ in the
 
     def fit(self, X: np.ndarray, y: np.ndarray) -> 'GeneEstimator':
         """ fit X to y
@@ -112,10 +112,6 @@ class GeneEstimator(base.BaseEstimator, base.RegressorMixin):
         
         # apply alpha to y
         y = [y_i(self.alpha) for y_i in y]
-        utils.check_array(X)
-        utils.check_X_y(X, y)
-        utils.indexable(X)
-        utils.indexable(y)
         if self.estimator_t != 'HGB':  #check this. https://scikit-learn.org/stable/developers/utilities.html#developers-utils
             utils.assert_all_finite(X)
             utils.assert_all_finite(y)
@@ -134,8 +130,6 @@ class GeneEstimator(base.BaseEstimator, base.RegressorMixin):
 
     def predict(self, X: np.ndarray) -> np.ndarray:
         """ """
-        # apply alpha to y
-        # y = [y_i(self.alpha) for y_i in y] 
         utils.validation.check_is_fitted(self.est)
         return self.est.predict(X)
 
@@ -144,11 +138,6 @@ class GeneEstimator(base.BaseEstimator, base.RegressorMixin):
         # apply alpha to y
         y = [y_i(self.alpha) for y_i in y]
         utils.validation.check_is_fitted(self.est)
-        utils.check_array(X)
-        utils.check_X_y(X, y)
-        utils.indexable(X)
-        utils.indexable(y)
-        # print(self.est.score(X,y))
         return self.est.score(X, y)
 
     def compute_feature_importances_tree(self) -> np.ndarray:
@@ -212,6 +201,8 @@ class GeneEstimator(base.BaseEstimator, base.RegressorMixin):
         for parameter, value in parameters.items():
             setattr(self, parameter, value)
         return self
+    def _validate_data(self, X, y):
+        pass
 
     def _more_tags(self) -> dict:
         """ """
@@ -219,6 +210,7 @@ class GeneEstimator(base.BaseEstimator, base.RegressorMixin):
             allow_nan = True 
         else:
             allow_nan = False
+  
         return {
             'requires_fit': True,
             'allow_nan': allow_nan,

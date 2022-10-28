@@ -83,15 +83,6 @@ class Links:
 
         ngenes = VIM.shape[0]
 
-        if gene_names is not None:
-            if not isinstance(gene_names, (list, tuple)):
-                raise ValueError('input argument gene_names must be a list of gene names')
-            elif len(gene_names) != ngenes:
-                raise ValueError(
-                    'input argument gene_names must be a list of length p, '
-                    'where p is the number of columns/genes in the expression data'
-                )
-
         if regulators != 'all':
             if not isinstance(regulators, (list, tuple)):
                 raise ValueError('input argument regulators must be a list of gene names')
@@ -564,9 +555,9 @@ class GOF:
         """plots the results of grid search"""
         # TODO: check the inputs: samples should have the same keys as priors, best_params
 
-        if priors is not None:
-            priors = {key: list(set([item[key] for item in priors['permts']])) for key in priors['permts'][0].keys()}
-            samples = {key: list(set([item[key] for item in samples['permts']])) for key in samples['permts'][0].keys()}
+        if priors is not None and samples is not None:
+            priors = {key: list(set([item[key] for item in priors])) for key in priors.keys()}
+            samples = {key: list(set([item[key] for item in samples])) for key in samples.keys()}
 
         def normalize(xx, priors):
             xx = {key: np.array(list(set(values))) for key, values in xx.items()}
