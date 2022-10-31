@@ -41,7 +41,6 @@ class Links:
             links,
             gene_names,
             regulators='all',
-            maxcount='all',
             KO=None,  # TODO: unused
             regulator_tag='Regulator',
             target_tag='Target',
@@ -49,7 +48,7 @@ class Links:
             sign_tag='Sign'
     ):
 
-        """Gets the regulatory links in a narray and converts it to a df.
+        """Gets the regulatory links in a matrix ({gene1-gene1, gene1-gene2, ...; gene2-gene1, gene2-gene2, etc}) converts it to a df.
         
         Parameters
         ----------
@@ -62,11 +61,6 @@ class Links:
             List containing the names of the candidate regulators. When a list of regulators is provided, the names of all the genes must be provided (in gene_names), and the returned list contains only edges directed from the candidate regulators. When regulators is set to 'all', any gene can be a candidate regulator.
             default: 'all'
             
-        maxcount: 'all' or positive integer, optional
-            Writes only the first maxcount regulatory links of the ranked list. When maxcount is set to 'all', all the regulatory links are written.
-            default: 'all'
-            
-        
         Returns
         -------
         
@@ -83,61 +77,20 @@ class Links:
 
         ngenes = VIM.shape[0]
 
-        if regulators != 'all':
-            if not isinstance(regulators, (list, tuple)):
-                raise ValueError('input argument regulators must be a list of gene names')
+        nTFs = ngenes
 
-            if gene_names is None:
-                raise ValueError('the gene names must be specified (in input argument gene_names)')
-            else:
-                sIntersection = set(gene_names).intersection(set(regulators))
-                if not sIntersection:
-                    raise ValueError('The genes must contain at least one candidate regulator')
-
-        if maxcount != 'all' and not isinstance(maxcount, int):
-            raise ValueError('input argument maxcount must be "all" or a positive integer')
-
-        # Get the indices of the candidate regulators
-        if regulators == 'all':
-            input_idx = list(range(ngenes))
-        else:
-            input_idx = [i for i, gene in enumerate(gene_names) if
-                         gene in regulators]  # TODO: change this to individual gene regulators
-
-        nTFs = len(input_idx)
-
-        # Get the non-ranked list of regulatory links
-        vInter = [(i, j, score) for (i, j), score in np.ndenumerate(VIM) if i in input_idx and i != j]
-
-        # Rank the list according to the weights of the edges        
-        vInter_sort = sorted(vInter, key=operator.itemgetter(2), reverse=True)
-        nInter = len(vInter_sort)
-
-        # Random permutation of edges with score equal to 0
-        flag = 1
-        i = 0
-        while flag and i < nInter:
-            (TF_idx, target_idx, score) = vInter_sort[i]
-            if score == 0:
-                flag = 0
-            else:
-                i += 1
-
-        if not flag:
-            items_perm = vInter_sort[i:]
-            items_perm = np.random.permutation(items_perm)
-            vInter_sort[i:] = items_perm
+        # remove gene to itself regulatory score
+        i_j_links = [(i, j, score) for (i, j), score in np.ndenumerate(VIM) if i != j]
+        # Rank the list according to the weights of the edges    
+        i_j_links_sort = sorted(i_j_links, key=operator.itemgetter(2), reverse=True)
+        nToWrite = len(i_j_links_sort)
 
         # Write the ranked list of edges
-        nToWrite = nInter
-        if isinstance(maxcount, int) and 0 <= maxcount < nInter:
-            nToWrite = maxcount
-
         regs = []
         targs = []
         scores = []
         for i in range(nToWrite):
-            (TF_idx, target_idx, score) = vInter_sort[i]
+            (TF_idx, target_idx, score) = i_j_links_sort[i]
             TF_idx = int(TF_idx)
             target_idx = int(target_idx)
             regs.append(gene_names[TF_idx])
@@ -149,9 +102,9 @@ class Links:
         df[target_tag] = targs
         df[weight_tag] = scores
         df[sign_tag] = ''
-        # print(df)
         df = Links.sort(df, gene_names)
         return df
+
 
     @staticmethod
     def output(links_df, file_name):
@@ -168,7 +121,7 @@ class Links:
         links --  Target Regulator Weight as a database
         sorted_gene_names -- gene names sorted
         """
-        # TODO: missing genes
+        # TODO: how to deal with missing genes
 
         for i, gene in enumerate(sorted_gene_names):
             df_gene = links.loc[links[regulator_tag] == gene]
@@ -246,9 +199,15 @@ class Data:
         return Xs, ys
 
     @staticmethod
-    def process_static(SS_data, gene_names, regulators='all', KO=None):
+    def process_static(SS_data, gene_names, regulators='all', perturbations=None, KO=None):
         """ Reformat data for static analysis 
+        SS_data -- static data in the format n_samples*n_genes
+        perturbations -- initial changes to the genes such as adding certain values. n_samples*n_genes
         KO -- the list of knock-out gene names. For now, each row has 1 gene name. TODO: one gene for all samples; more than one genes for one sample
+        
+        output:
+        Xs -- X inputs for each gene. n_genes*n_samples*n_genes 
+        ys -- Y for each gene. n_genes*n_samples
         """
         ngenes = len(SS_data[0])
         # obtain X and y for each target in a n_sample * n_feature
@@ -270,14 +229,15 @@ class Data:
             except UnboundLocalError:
                 pass
             X = SS_data[:, input_idx]
+            
             Xs.append(X)
-            # static without alpha
-            # Y = SS_data[:,i_gene]
-            # ys.append(Y)
-            # static with alpha
             y = []
             for i_sample, sample_data in enumerate(SS_data):
-                f_dy_dt = lambda alpha_i, i_sample=i_sample, i_gene=i_gene: float(SS_data[i_sample][i_gene])
+                # add perturbations
+                if perturbations is not None:
+                    f_dy_dt = float(SS_data[i_sample][i_gene]) - float(perturbations[i_sample][i_gene]) 
+                else:
+                    f_dy_dt = float(SS_data[i_sample][i_gene])
                 y.append(f_dy_dt)
             ys.append(y)
         return Xs, ys

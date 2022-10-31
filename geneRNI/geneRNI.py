@@ -111,7 +111,10 @@ class GeneEstimator(base.RegressorMixin):
         '''The estimated attributes are expected to be overridden when you call fit a second time.'''
         
         # apply alpha to y
-        y = [y_i(self.alpha) for y_i in y]
+        try:
+            y = [y_i(self.alpha) for y_i in y]
+        except:
+            pass
         if self.estimator_t != 'HGB':  #check this. https://scikit-learn.org/stable/developers/utilities.html#developers-utils
             utils.assert_all_finite(X)
             utils.assert_all_finite(y)
@@ -136,7 +139,10 @@ class GeneEstimator(base.RegressorMixin):
     def score(self, X: np.ndarray, y: np.ndarray, **kwargs) -> np.ndarray:
         """ """
         # apply alpha to y
-        y = [y_i(self.alpha) for y_i in y]
+        try:
+            y = [y_i(self.alpha) for y_i in y]
+        except:
+            pass
         utils.validation.check_is_fitted(self.est)
         return self.est.score(X, y)
 
