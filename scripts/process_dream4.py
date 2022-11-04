@@ -1,4 +1,3 @@
-# precision-accuracy
 import os
 import sys  
 import pathlib
@@ -6,15 +5,14 @@ import pandas as pd
 import numpy as np
 import itertools
 import warnings
-def warn(*args, **kwargs):
-    pass
-warnings.warn = warn
-dir_main = os.path.join(pathlib.Path(__file__).parent.resolve(),'..')
+
+warnings.warn = lambda x: x
+
+dir_main = os.path.join(pathlib.Path(__file__).parent.resolve(), '..')
 sys.path.insert(0, dir_main)
+
 from geneRNI import geneRNI as ni
 from geneRNI import tools
-from geneRNI import search_param
-# from pathos.pools import ParallelPool as Pool
 from multiprocessing import Pool
 import ast
 pd.options.mode.chained_assignment = None
@@ -28,7 +26,7 @@ def dream4_single(estimator_t, size, network):
         out = ast.literal_eval(f.read())
     best_scores, best_params = out['best_scores'], out['best_params']
     # nework inference
-    _, _, _, gene_names = tools.Benchmark.f_data_dream(size, network)
+    _, _, _, gene_names = tools.Benchmark.f_data_dream4(size, network)
     _, train_scores, links, oob_scores, test_scores = ni.network_inference(Xs=out_data.Xs_train, ys=out_data.ys_train, 
                                                                            gene_names=gene_names,
                                                                            param=out_defaults.param, Xs_test=out_data.Xs_test, 
@@ -39,7 +37,7 @@ def dream4_single(estimator_t, size, network):
         score = test_scores
     
     # calculate PR
-    golden_links = tools.Benchmark.f_golden_dream(size, network)
+    golden_links = tools.Benchmark.f_golden_dream4(size, network)
     precision, recall, average_precision, average_precision_overall = tools.GOF.calculate_PR(gene_names, links, golden_links, details=True)
     print(f'completed {size} {network}')
     return size, network, best_params, score, average_precision_overall
@@ -49,7 +47,7 @@ def map_run(args):
 
 if __name__ == '__main__':
     n_jobs = int(sys.argv[1])
-    estimator_t = 'RF'
+    estimator_t = 'ridge'
 
     sizes = [10]
     networks = [1,2,3,4,5]
