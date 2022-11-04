@@ -21,7 +21,7 @@ def dream4_single(estimator_t, size, network):
     out_defaults = tools.Settings.default(estimator_t=estimator_t)
     out_data = tools.Benchmark.process_data_dream4(size=size, network=network, estimator_t=estimator_t, verbose=False)
     results_dir = os.path.join(dir_main, f'results/dream4/{estimator_t}/param_search_dream_{size}_{network}.txt')
-    with open(results_dir,'r') as f:
+    with open(results_dir, 'r') as f:
         out = ast.literal_eval(f.read())
     best_scores, best_params = out['best_scores'], out['best_params']
     # nework inference

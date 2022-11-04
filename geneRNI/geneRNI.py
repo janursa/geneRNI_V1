@@ -11,7 +11,7 @@ __author__ = 'Jalil Nourisa'
 import os
 import pathlib
 import sys
-from typing import Optional
+from typing import Optional, Iterable, Any, Sized
 
 import numpy as np
 from sklearn import base
@@ -20,6 +20,7 @@ from sklearn import utils
 
 from geneRNI import tools
 from geneRNI.models import get_estimator_wrapper
+from geneRNI.utils import is_lambda_function
 
 dir_main = os.path.join(pathlib.Path(__file__).parent.resolve(), '..')
 sys.path.insert(0, dir_main)  # TODO: not recommended (let's make a setup.py file instead)
@@ -52,7 +53,7 @@ def network_inference(Xs, ys, gene_names, param, param_unique=None, Xs_test=None
         ests[i].fit(X, y)
     
     # train score
-    train_scores = [ests[i].score(X,y) for i, (X, y) in enumerate(zip(Xs,ys))]
+    train_scores = [ests[i].score(X, y) for i, (X, y) in enumerate(zip(Xs, ys))]
     tools.verboseprint(verbose, f'\nnetwork inference: train score, mean: {np.mean(train_scores)} std: {np.std(train_scores)}')
     # print(f'\nnetwork inference: train score, mean: {np.mean(train_scores)} std: {np.std(train_scores)}')
     # oob score
@@ -65,7 +66,7 @@ def network_inference(Xs, ys, gene_names, param, param_unique=None, Xs_test=None
         oob_scores = None
     # test score
     if Xs_test is not None or ys_test is not None:
-        test_scores = [ests[i].score(X,y) for i, (X, y) in enumerate(zip(Xs_test,ys_test))]
+        test_scores = [ests[i].score(X, y) for i, (X, y) in enumerate(zip(Xs_test, ys_test))]
         tools.verboseprint(
             verbose,
             f'network inference: test score, mean: {np.mean(test_scores)} std: {np.std(test_scores)}')
@@ -132,7 +133,7 @@ class GeneEstimator(base.RegressorMixin):
         self.X_ = X
         self.y_ = y
         self.est = get_estimator_wrapper(self.estimator_t).new_estimator()
-        self.est.fit(X, y)
+        self.est.fit(X, self.check_target(y))
         return self
 
     def predict(self, X: np.ndarray) -> np.ndarray:
@@ -148,7 +149,7 @@ class GeneEstimator(base.RegressorMixin):
         except:
             pass
         utils.validation.check_is_fitted(self.est)
-        return self.est.score(X, y)
+        return self.est.score(X, self.check_target(y))
 
     def compute_feature_importances(self) -> np.ndarray:
         """Computes variable importances from a trained model."""
@@ -193,6 +194,15 @@ class GeneEstimator(base.RegressorMixin):
             vi = vi / vi_sum
         return vi
 
+    def check_target(self, y: Any) -> np.ndarray:
+        new_y = np.empty(len(y), dtype=float)
+        for i in range(len(y)):
+            if is_lambda_function(y[i]):
+                new_y[i] = y[i](self.alpha)  # TODO: is this correct?
+            else:
+                new_y[i] = y[i]
+        return new_y
+
     def get_params(self, deep: bool = True) -> dict:
         """ The get_params function takes no arguments and returns a dict of 
         the __init__ parameters of the estimator, together with their values. 
@@ -205,6 +215,7 @@ class GeneEstimator(base.RegressorMixin):
         for parameter, value in parameters.items():
             setattr(self, parameter, value)
         return self
+
     def _validate_data(self, X, y):
         pass
 
