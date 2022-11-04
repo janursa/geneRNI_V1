@@ -20,7 +20,7 @@
 #  MA 02110-1301, USA.
 
 from abc import ABCMeta, abstractmethod
-from typing import Any
+from typing import Any, Dict
 
 import numpy as np
 
@@ -37,3 +37,12 @@ class BaseWrapper(metaclass=ABCMeta):
     def compute_feature_importances(estimator: Any) -> np.array:
         pass
 
+    @staticmethod
+    @abstractmethod
+    def get_default_parameters() -> Dict[str, Any]:
+        pass
+
+    @staticmethod
+    @abstractmethod
+    def get_grid_parameters() -> Dict[str, Any]:
+        pass

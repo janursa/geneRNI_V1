@@ -19,6 +19,8 @@
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #  MA 02110-1301, USA.
 
+from typing import Dict, Any
+
 import numpy as np
 from sklearn.ensemble import RandomForestRegressor
 
@@ -36,3 +38,22 @@ class RFWrapper(BaseWrapper):
         # return np.array([e.tree_.compute_feature_importances(normalize=False)
         #                         for e in estimator.estimators_])
         return estimator.feature_importances_
+
+    @staticmethod
+    def get_default_parameters() -> Dict[str, Any]:
+        return dict(
+            estimator_t='RF',
+            min_samples_leaf=1,
+            # criterion = 'absolute_error',
+            n_estimators=200,
+            alpha=.9,
+            n_jobs=10
+        )
+
+    @staticmethod
+    def get_grid_parameters() -> Dict[str, Any]:
+        return dict(
+            min_samples_leaf=np.arange(1, 10, 1),
+            max_depth=np.arange(10, 50, 5),
+            alpha=np.arange(0, 1, .1),
+        )

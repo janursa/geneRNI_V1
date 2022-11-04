@@ -19,6 +19,8 @@
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #  MA 02110-1301, USA.
 
+from typing import Dict, Any
+
 import numpy as np
 from sklearn.ensemble import HistGradientBoostingRegressor
 
@@ -36,3 +38,21 @@ class HGBWrapper(BaseWrapper):
         # TODO: implement this
         return np.array([e.tree_.compute_feature_importances(normalize=False)
                                 for e in estimator.estimators_])
+
+    @staticmethod
+    def get_default_parameters() -> Dict[str, Any]:
+        return dict(
+            estimator_t='HGB',
+            min_samples_leaf=5,
+            learning_rate=.05,
+            # criterion = 'absolute_error',
+            max_iter=50,
+        )
+
+    @staticmethod
+    def get_grid_parameters() -> Dict[str, Any]:
+        return dict(
+            learning_rate=np.arange(0.001, .2, .02),
+            min_samples_leaf=np.arange(1, 30, 2),
+            max_iter=np.arange(20, 200, 10),
+        )

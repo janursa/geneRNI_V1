@@ -19,6 +19,8 @@
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #  MA 02110-1301, USA.
 
+from typing import Dict, Any
+
 import numpy as np
 from sklearn.linear_model import Ridge
 
@@ -36,3 +38,15 @@ class RidgeWrapper(BaseWrapper):
         coef = np.abs(estimator.coef_)
         assert len(coef.shape) == 1
         return coef
+
+    @staticmethod
+    def get_default_parameters() -> Dict[str, Any]:
+        return dict(
+            estimator_t='ridge',
+        )
+
+    @staticmethod
+    def get_grid_parameters() -> Dict[str, Any]:
+        return dict(
+            alpha=10. ** np.arange(-3, 4)
+        )

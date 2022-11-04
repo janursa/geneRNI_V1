@@ -6,7 +6,6 @@ import numpy as np
 import itertools
 import warnings
 
-warnings.warn = lambda x: x
 
 dir_main = os.path.join(pathlib.Path(__file__).parent.resolve(), '..')
 sys.path.insert(0, dir_main)
@@ -42,8 +41,10 @@ def dream4_single(estimator_t, size, network):
     print(f'completed {size} {network}')
     return size, network, best_params, score, average_precision_overall
 
+
 def map_run(args):
     return dream4_single(**args)
+
 
 if __name__ == '__main__':
     n_jobs = int(sys.argv[1])
@@ -81,6 +82,3 @@ if __name__ == '__main__':
         print({'best_scores': scores_stack}, file=ff)
     with open(os.path.join(dir_main, f'results/dream4/{estimator_t}_precision_recall_AUC.txt'), 'w') as ff:
         print({'PR': PR_stack}, file=ff)
-    
-
-        

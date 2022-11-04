@@ -23,6 +23,8 @@ from sklearn import utils
 
 from scipy import sparse
 
+from geneRNI.models import get_estimator_wrapper
+
 dir_main = os.path.join(pathlib.Path(__file__).parent.resolve(), '..')
 sys.path.insert(0, dir_main)
 
@@ -309,9 +311,8 @@ class Data:
             return types_.DataType(Xs, ys)
         else:
             for i, (X, y) in enumerate(zip(Xs, ys)):
-                Xs_train[i], Xs_test[i], ys_train[i], ys_test[i] = model_selection.train_test_split(X, y,
-                                                                                                    test_size=test_size,
-                                                                                                    **specs)
+                Xs_train[i], Xs_test[i], ys_train[i], ys_test[i] = model_selection.train_test_split(
+                        X, y, test_size=test_size, **specs)
             return types_.DataType(Xs_train, ys_train, Xs_test, ys_test)
 
     @staticmethod
@@ -336,44 +337,10 @@ class Settings:
     @staticmethod
     def default(estimator_t):
         test_size = None
-        if estimator_t == 'RF':
-            param = dict(
-                estimator_t='RF',
-                min_samples_leaf=1,
-                # criterion = 'absolute_error',
-                n_estimators=200,
-                alpha=.9,
-                n_jobs=10
-            )
-            param_grid = dict(
-                min_samples_leaf=np.arange(1, 10, 1),
-                max_depth=np.arange(10, 50, 5),
-                alpha=np.arange(0, 1, .1),
-            )
-        elif estimator_t == 'HGB':
-            param = dict(
-                estimator_t='HGB',
-                min_samples_leaf=5,
-                learning_rate=.05,
-                # criterion = 'absolute_error',
-                max_iter=50,
-
-            )
-            param_grid = dict(
-                learning_rate=np.arange(0.001, .2, .02),
-                min_samples_leaf=np.arange(1, 30, 2),
-                max_iter=np.arange(20, 200, 10),
-            )
+        param = get_estimator_wrapper(estimator_t).get_default_parameters()
+        param_grid = get_estimator_wrapper(estimator_t).get_grid_parameters()
+        if estimator_t == 'HGB':
             test_size = 0.25
-        elif estimator_t == 'ridge':
-            param = dict(
-                estimator_t='ridge',
-            )
-            param_grid = dict(
-                alpha=10. ** np.arange(-3, 4)
-            )
-        else:
-            raise ValueError(f'Unsupported estimator {estimator_t}')
         random_state_data = None
         random_state = None
         bootstrap_fold = None
@@ -381,6 +348,7 @@ class Settings:
 
 
 class Benchmark:
+
     @staticmethod
     def f_data_dream5(network):
         """ retreives train data for dream5 for network"""
