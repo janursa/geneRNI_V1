@@ -11,18 +11,16 @@ __author__ = 'Jalil Nourisa'
 import os
 import pathlib
 import sys
-from typing import Optional
+from typing import Optional, Iterable, Any, Sized
 
 import numpy as np
 from sklearn import base
-from sklearn import ensemble
 from sklearn import inspection
-from sklearn import tree
 from sklearn import utils
-from sklearn.linear_model import Ridge
 
 from geneRNI import tools
-
+from geneRNI.models import get_estimator_wrapper
+from geneRNI.utils import is_lambda_function
 
 dir_main = os.path.join(pathlib.Path(__file__).parent.resolve(), '..')
 sys.path.insert(0, dir_main)  # TODO: not recommended (let's make a setup.py file instead)
@@ -51,22 +49,27 @@ def network_inference(Xs, ys, gene_names, param, param_unique=None, Xs_test=None
         ests = [GeneEstimator(**{**param, **param_unique}) for _ in range(n_genes)]
     else: 
         ests = [GeneEstimator(**{**param, **param_unique[i]}) for i in range(n_genes)]
-    fits = [ests[i].fit(X, y) for i, (X, y) in enumerate(zip(Xs, ys))]  # TODO: not used
+    for i, (X, y) in enumerate(zip(Xs, ys)):
+        ests[i].fit(X, y)
     
     # train score
-    train_scores = [ests[i].score(X,y) for i, (X, y) in enumerate(zip(Xs,ys))]
+    train_scores = [ests[i].score(X, y) for i, (X, y) in enumerate(zip(Xs, ys))]
     tools.verboseprint(verbose, f'\nnetwork inference: train score, mean: {np.mean(train_scores)} std: {np.std(train_scores)}')
     # print(f'\nnetwork inference: train score, mean: {np.mean(train_scores)} std: {np.std(train_scores)}')
     # oob score
     if param['estimator_t'] == 'RF':
         oob_scores = [est.est.oob_score_ for est in ests]  
-        tools.verboseprint(verbose,f'network inference: oob score (only RF), mean: {np.mean(oob_scores)} std: {np.std(oob_scores)}')      
+        tools.verboseprint(
+            verbose,
+            f'network inference: oob score (only RF), mean: {np.mean(oob_scores)} std: {np.std(oob_scores)}')
     else:
         oob_scores = None
     # test score
     if Xs_test is not None or ys_test is not None:
-        test_scores = [ests[i].score(X,y) for i, (X, y) in enumerate(zip(Xs_test,ys_test))]
-        tools.verboseprint(verbose,f'network inference: test score, mean: {np.mean(test_scores)} std: {np.std(test_scores)}')
+        test_scores = [ests[i].score(X, y) for i, (X, y) in enumerate(zip(Xs_test, ys_test))]
+        tools.verboseprint(
+            verbose,
+            f'network inference: test score, mean: {np.mean(test_scores)} std: {np.std(test_scores)}')
     else:
         test_scores = None
     # feature importance #TODO: fix this
@@ -77,7 +80,7 @@ def network_inference(Xs, ys, gene_names, param, param_unique=None, Xs_test=None
     #     print('Variance based feature importance')
     #     links_v = [ests[i].compute_feature_importances_tree() for i,_ in enumerate(ys)]
     # links = links_p
-    links = [ests[i].compute_feature_importances_tree() for i, _ in enumerate(ys)]
+    links = [ests[i].compute_feature_importances() for i, _ in enumerate(ys)]
     links_df = tools.Links.format(links, gene_names)
 
     if output_dir is not None:
@@ -89,7 +92,7 @@ def network_inference(Xs, ys, gene_names, param, param_unique=None, Xs_test=None
 class GeneEstimator(base.RegressorMixin):
     """The docstring for a class should summarize its behavior and list the public methods and instance variables """
 
-    def __init__(self, estimator_t: base.BaseEstimator, alpha: float = 0., **params):
+    def __init__(self, estimator_t: str, alpha: float = 0., **params):
         '''args should all be keyword arguments with a default value -> kwargs should be all the keyword params of all regressors with values'''
         '''they should not be documented under the “Attributes” section, but rather under the “Parameters” section for that estimator.'''
         '''every keyword argument accepted by __init__ should correspond to an attribute on the instance'''
@@ -99,10 +102,12 @@ class GeneEstimator(base.RegressorMixin):
         self.X_: Optional[np.ndarray] = None
         self.y_: Optional[np.ndarray] = None
         self.params: dict = params
-        self.estimator_t: base.BaseEstimator = estimator_t
+        self.estimator_t: str = estimator_t
         self.alpha: float = alpha
-        self.est: Optional[base.BaseEstimator] = None
-        # self._required_parameters = ('allow_nan') #estimators also need to declare any non-optional parameters to __init__ in the
+        self.est = None
+
+        # estimators also need to declare any non-optional parameters to __init__ in the
+        # self._required_parameters = ('allow_nan')
 
     def fit(self, X: np.ndarray, y: np.ndarray) -> 'GeneEstimator':
         """ fit X to y
@@ -114,24 +119,24 @@ class GeneEstimator(base.RegressorMixin):
         '''The estimated attributes are expected to be overridden when you call fit a second time.'''
         
         # apply alpha to y
-        try:
+        try:  # TODO: bad design
             y = [y_i(self.alpha) for y_i in y]
         except:
             pass
-        if self.estimator_t != 'HGB':  #check this. https://scikit-learn.org/stable/developers/utilities.html#developers-utils
-            utils.assert_all_finite(X)
-            utils.assert_all_finite(y)
+
+        utils.check_array(X)
+        utils.check_X_y(X, y)
+        utils.indexable(X)
+        utils.indexable(y)
+
+        # Check this. https://scikit-learn.org/stable/developers/utilities.html#developers-utils
+        utils.assert_all_finite(X)
+        utils.assert_all_finite(y)
+
         self.X_ = X
         self.y_ = y
-        if self.estimator_t == 'RF':
-            self.est = ensemble.RandomForestRegressor(oob_score = True,**self.params)
-        elif self.estimator_t == 'HGB':
-            self.est = ensemble.HistGradientBoostingRegressor(**self.params)
-        elif self.estimator_t == 'ridge':
-            self.est = Ridge(**self.params)
-        else:
-            raise ValueError('Define estimator_t')
-        self.est.fit(X, y)
+        self.est = get_estimator_wrapper(self.estimator_t).new_estimator()
+        self.est.fit(X, self.check_target(y))
         return self
 
     def predict(self, X: np.ndarray) -> np.ndarray:
@@ -147,17 +152,11 @@ class GeneEstimator(base.RegressorMixin):
         except:
             pass
         utils.validation.check_is_fitted(self.est)
-        return self.est.score(X, y)
+        return self.est.score(X, self.check_target(y))
 
-    def compute_feature_importances_tree(self) -> np.ndarray:
-        """Computes variable importances from a trained tree-based model. Deprecated"""
-        
-        if isinstance(self.est, tree.BaseDecisionTree):
-            return self.est.tree_.compute_feature_importances(normalize=False)
-        else:
-            importances = np.array([e.tree_.compute_feature_importances(normalize=False)
-                           for e in self.est.estimators_])
-            return np.mean(importances, axis=0)
+    def compute_feature_importances(self) -> np.ndarray:
+        """Computes variable importances from a trained model."""
+        return get_estimator_wrapper(self.estimator_t).compute_feature_importances(self.est)
 
     def permutation_importance(
             self,
@@ -198,6 +197,15 @@ class GeneEstimator(base.RegressorMixin):
             vi = vi / vi_sum
         return vi
 
+    def check_target(self, y: Any) -> np.ndarray:
+        new_y = np.empty(len(y), dtype=float)
+        for i in range(len(y)):
+            if is_lambda_function(y[i]):
+                new_y[i] = y[i](self.alpha)  # TODO: is this correct?
+            else:
+                new_y[i] = y[i]
+        return new_y
+
     def get_params(self, deep: bool = True) -> dict:
         """ The get_params function takes no arguments and returns a dict of 
         the __init__ parameters of the estimator, together with their values. 
@@ -210,6 +218,7 @@ class GeneEstimator(base.RegressorMixin):
         for parameter, value in parameters.items():
             setattr(self, parameter, value)
         return self
+
     def _validate_data(self, X, y):
         pass
 

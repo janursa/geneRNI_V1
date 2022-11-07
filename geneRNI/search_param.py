@@ -6,17 +6,14 @@ __all__ = ['a', 'b', 'c']
 __version__ = '0.1'
 __author__ = 'Jalil Nourisa'
 
-import time
+import itertools
 import os
+import random
+import time
 from typing import Tuple
 
 import numpy as np
-import itertools
-import operator 
-import random
 from pathos.pools import ParallelPool as Pool
-import matplotlib.pyplot as plt
-
 from sklearn import model_selection
 
 from .geneRNI import GeneEstimator
@@ -110,7 +107,7 @@ def search(Xs, ys, param, param_grid, permts, n_jobs, output_dir=None, **specs):
             best_scores[i_gene] = best_score
             best_params[i_gene] = best_param
             best_ests[i_gene] = best_est
-    else: # parallel
+    else:  # parallel
         # multithreading happens either on gene_n or permuts, depending which one is bigger
         pool = Pool(n_jobs)
         if n_genes >= len(permts):
@@ -123,7 +120,7 @@ def search(Xs, ys, param, param_grid, permts, n_jobs, output_dir=None, **specs):
                 best_scores[i_gene] = best_score
                 best_params[i_gene] = best_param
                 best_ests[i_gene] = best_est
-        else: # when there is more permuts
+        else:  # when there is more permuts
             print('Permutation-based multi threading')
             input_data = [{'i': i, 'Xs': Xs, 'ys': ys, 'param': param, 'permt': permts[i], **specs} for i in range(len(permts))]
             all_output = pool.map(map_permut, input_data)
@@ -168,7 +165,7 @@ def permutation(param_grid, output_dir=None):
     return permts
 
 
-def grid_search(Xs,ys, param, param_grid, n_jobs = 1, **specs):
+def grid_search(Xs, ys, param, param_grid, n_jobs=1, **specs):
     """ 
     spces -- grid search related params such as CV which is passed to single grid search
     """
@@ -218,4 +215,3 @@ def rand_search_partial(Xs, ys, param, param_grid, n_genes, n_jobs = 1, n_sample
     choice = [random.randint(0, len(ys)-1) for i in range(n_genes)]
     best_scores, best_params, best_ests = search(Xs[choice], ys[choice], param, param_grid, permts=sampled_permts, n_jobs=n_jobs, **specs)
     return best_scores, best_params, best_ests, sampled_permts_sorted
-
