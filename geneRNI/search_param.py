@@ -22,9 +22,10 @@ from sklearn import model_selection
 from .geneRNI import GeneEstimator
 
 
-def evaluate_single(X: np.ndarray, y: np.ndarray, param: dict, cv: int = 4) -> Tuple[GeneEstimator, float]:
+def evaluate_single(X: np.ndarray, y: np.ndarray, param: dict, cv: int = 4, train_flag=False, **specs) -> Tuple[GeneEstimator, float]:
     """ evalutes the gene estimator for a given param and returns a test score 
     for RF, the test score is oob_score. For the rest, cv is applied.
+    train_flag -- to use training score 
     """
     if param['estimator_t'] == 'RF':
         use_oob_flag = True
@@ -34,7 +35,10 @@ def evaluate_single(X: np.ndarray, y: np.ndarray, param: dict, cv: int = 4) -> T
     est = GeneEstimator(**param)
     if use_oob_flag:
         est.fit(X, y)
-        score = est.est.oob_score_
+        if train_flag:
+            score = est.score(X,y)
+        else:
+            score = est.est.oob_score_
     else:
         cv_a = model_selection.ShuffleSplit(n_splits=cv, test_size=(1/cv)) 
         scores = model_selection.cross_val_score(est, X, y, cv=cv_a)
@@ -49,7 +53,7 @@ def grid_search_single_gene(X: np.ndarray, y: np.ndarray, param: dict, permts: d
     scores = []
     for permt in permts:  
         param_a = {**param, **permt}
-        fit, score = evaluate_single(X, y, param_a, cv)
+        fit, score = evaluate_single(X, y, param_a, cv,**specs)
         fits.append(fit)
         scores.append(score)
     # find the best candidate. Max score is considered best score. 
@@ -67,7 +71,7 @@ def grid_search_single_permut(Xs, ys, param: dict, permt: dict, cv: int = 4, **s
     fits = []
     scores = []
     for X, y in zip(Xs, ys):
-        fit, score = evaluate_single(X, y, param_a, cv)
+        fit, score = evaluate_single(X, y, param_a, cv,**specs)
         fits.append(fit)
         scores.append(score)
     return scores, fits
@@ -87,7 +91,7 @@ def map_permut(args):
     return i, grid_search_single_permut(**args_rest)
 
 
-def search(Xs, ys, param, param_grid, permts, n_jobs, **specs):
+def search(Xs, ys, param, param_grid, permts, n_jobs, output_dir=None, **specs):
     """Evaluates the permts and returns the best results for each gene """
     time_start = time.time()
     if 'n_jobs' in param: 
@@ -142,6 +146,11 @@ def search(Xs, ys, param, param_grid, permts, n_jobs, **specs):
             best_params = [permts[i] for i in best_indices]
     time_end = time.time()
     print('Param search is completed in %.3f seconds' % (time_end-time_start))
+    if output_dir is not None:
+        with open(os.path.join(output_dir, 'best_params.txt'), 'w') as f:
+            print({'best_params': best_params}, file=f)
+        with open(os.path.join(output_dir, 'best_scores.txt'), 'w') as f:
+            print({'best_scores': best_scores}, file=f)
     return best_scores, best_params, best_ests
 
 
@@ -188,7 +197,7 @@ def rand_search(Xs, ys, param, param_grid, n_jobs=1, n_sample=60, output_dir=Non
     sampled_permts_sorted = {key: [item[key] for item in sampled_permts] for key in param_grid.keys()}
     print(f'Running {len(sampled_permts)} samples randomly')
 
-    best_scores, best_params, best_ests = search(Xs, ys, param, param_grid, permts=sampled_permts, n_jobs=n_jobs, **specs)
+    best_scores, best_params, best_ests = search(Xs, ys, param, param_grid, permts=sampled_permts, n_jobs=n_jobs, output_dir=output_dir, **specs)
     return best_scores, best_params, best_ests, sampled_permts_sorted
 
 

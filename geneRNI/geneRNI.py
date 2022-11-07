@@ -37,7 +37,7 @@ sys.path.insert(0, dir_main)  # TODO: not recommended (let's make a setup.py fil
 # TODOC: pathos is used instead of multiprocessing, which is an external dependency. 
 #        This is because multiprocessing uses pickle that has problem with lambda function.
 
-def network_inference(Xs, ys, gene_names, param, param_unique=None, Xs_test=None, ys_test=None, verbose=True):
+def network_inference(Xs, ys, gene_names, param, param_unique=None, Xs_test=None, ys_test=None, verbose=True, output_dir=None):
     """ Determines links of network inference
     If the ests are given, use them instead of creating new ones.
 
@@ -69,7 +69,7 @@ def network_inference(Xs, ys, gene_names, param, param_unique=None, Xs_test=None
         tools.verboseprint(verbose,f'network inference: test score, mean: {np.mean(test_scores)} std: {np.std(test_scores)}')
     else:
         test_scores = None
-    # feature importance
+    # feature importance #TODO: fix this
     # if Xs_test is not None:
     #     print('Permutation based feature importance')
     #     links_p = [ests[i].compute_feature_importance_permutation(X,y) for i, (X, y) in enumerate(zip(Xs_test,ys_test))]
@@ -79,7 +79,10 @@ def network_inference(Xs, ys, gene_names, param, param_unique=None, Xs_test=None
     # links = links_p
     links = [ests[i].compute_feature_importances_tree() for i, _ in enumerate(ys)]
     links_df = tools.Links.format(links, gene_names)
-    # links = None
+
+    if output_dir is not None:
+        links_df.to_csv(os.path.join(output_dir, 'links.txt'))
+
     return ests, train_scores, links_df, oob_scores, test_scores
 
 
