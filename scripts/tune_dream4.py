@@ -1,4 +1,5 @@
 # precision-accuracy
+import argparse
 import os
 import pathlib
 import sys
@@ -9,6 +10,7 @@ import pandas as pd
 dir_main = os.path.join(pathlib.Path(__file__).parent.resolve(), '..')
 sys.path.insert(0, dir_main)
 
+from geneRNI.models import get_estimator_names
 from geneRNI import tools
 from geneRNI import search_param
 
@@ -56,11 +58,24 @@ def dream4_size100(specs, estimator_t):
 
 
 if __name__ == '__main__':
+
+    # Parse command-line arguments
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        '-n-jobs', type=int, default=1, help='Number of jobs'
+    )
+    parser.add_argument(
+        '-estimator', type=str, default='ridge',
+        choices=get_estimator_names(), help='Gene expression estimator'
+    )
+    args = parser.parse_args()
+    n_jobs = args.n_jobs
+    estimator_t = args.estimator
+
     specs = dict(
-        n_jobs=int(sys.argv[1]),
+        n_jobs=n_jobs,
         cv=4,
         output_dir=os.path.join(dir_main, 'results')
     )
-    estimator_t = 'ridge'  # 'HGB'
     dream4_size10(specs, estimator_t)
     # dream4_size100(specs, estimator_t)

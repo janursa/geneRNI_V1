@@ -9,6 +9,8 @@ __author__ = 'Jalil Nourisa'
 import os
 import sys
 import time
+import warnings
+
 import numpy as np
 import operator
 import itertools
@@ -216,10 +218,10 @@ class Data:
         Xs = []
         ys = []
 
+        ko_indices = []
         if KO is not None:
-            KO_indices = []
             for gene in KO:
-                KO_indices.append(gene_names.index(gene))
+                ko_indices.append(gene_names.index(gene))
 
         for i_gene in range(ngenes):
             if regulators == 'all':
@@ -227,7 +229,7 @@ class Data:
             else:
                 input_idx = regulators[i_gene]
             try:
-                input_idx.remove(KO_indices[i_gene])
+                input_idx.remove(ko_indices[i_gene])
             except UnboundLocalError:
                 pass
             X = SS_data[:, input_idx]
@@ -542,6 +544,14 @@ class GOF:
                 ax.set_xticklabels(tags)
 
     @staticmethod
+    def calculate_auc_roc(gene_names, links, golden_links, details=True, regulator_tag='Regulator', target_tag='Target',
+                     weight_tag='Weight') -> float:
+        # break the array into n parts, one for each gene
+        scores = np.array(np.split(np.array(links[weight_tag].tolist()), len(gene_names)))  # links
+        tests = np.array(np.split(np.array(golden_links[weight_tag].tolist()), len(gene_names)))  # golden
+        return metrics.roc_auc_score(tests, scores)
+
+    @staticmethod
     def calculate_PR(gene_names, links, golden_links, details=True, regulator_tag='Regulator', target_tag='Target',
                      weight_tag='Weight'):
         """ Compute precision recall 
@@ -555,18 +565,21 @@ class GOF:
         scores = np.array(np.split(np.array(links[weight_tag].tolist()), len(gene_names)))  # links
         tests = np.array(np.split(np.array(golden_links[weight_tag].tolist()), len(gene_names)))  # golden
 
-        precision = dict()
-        recall = dict()
-        average_precision = dict()
-        if details:
-            for gene, score, test in zip(gene_names, scores, tests):
-                precision[gene], recall[gene], _ = metrics.precision_recall_curve(test, score)
-                average_precision[gene] = metrics.average_precision_score(test, score)
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore')
 
-            precision["micro"], recall["micro"], _ = metrics.precision_recall_curve(
-                tests.ravel(), scores.ravel()
-            )
-        average_precision['micro'] = metrics.average_precision_score(tests, scores, average="micro")
+            precision = dict()
+            recall = dict()
+            average_precision = dict()
+            if details:
+                for gene, score, test in zip(gene_names, scores, tests):
+                    precision[gene], recall[gene], _ = metrics.precision_recall_curve(test, score)
+                    average_precision[gene] = metrics.average_precision_score(test, score)
+
+                precision["micro"], recall["micro"], _ = metrics.precision_recall_curve(
+                    tests.ravel(), scores.ravel()
+                )
+            average_precision['micro'] = metrics.average_precision_score(tests, scores, average="micro")
         return precision, recall, average_precision, average_precision['micro']
 
     @staticmethod

@@ -1,4 +1,4 @@
-from typing import Type
+from typing import Type, List
 
 from .base import BaseWrapper
 from .rf import RFWrapper
@@ -17,3 +17,7 @@ def get_estimator_wrapper(estimator_t: str) -> Type[BaseWrapper]:
     if estimator_t not in __WRAPPERS__:
         raise ValueError(f'Unknown estimator "{estimator_t}"')
     return __WRAPPERS__[estimator_t]
+
+
+def get_estimator_names() -> List[str]:
+    return list(__WRAPPERS__.keys())
