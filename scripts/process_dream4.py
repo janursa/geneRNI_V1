@@ -3,9 +3,7 @@ import os
 import sys  
 import pathlib
 import pandas as pd
-import numpy as np
 import itertools
-import warnings
 
 dir_main = os.path.join(pathlib.Path(__file__).parent.resolve(), '..')
 sys.path.insert(0, dir_main)
@@ -31,9 +29,7 @@ def dream4_single(estimator_t, size, network):
     # Network inference
     _, _, _, gene_names = tools.Benchmark.f_data_dream4(size, network)
     _, train_scores, links, oob_scores, test_scores = ni.network_inference(
-        Xs=out_data.Xs_train, ys=out_data.ys_train,
-        gene_names=gene_names, param=out_defaults.param, Xs_test=out_data.Xs_test,
-        ys_test=out_data.ys_test, param_unique=best_params, verbose=False
+        out_data, gene_names=gene_names, param=out_defaults.param, param_unique=best_params, verbose=False
     )
     score = oob_scores if (estimator_t == 'RF') else test_scores
     

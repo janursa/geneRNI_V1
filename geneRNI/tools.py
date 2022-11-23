@@ -10,6 +10,7 @@ import os
 import sys
 import time
 import warnings
+from typing import Tuple
 
 import numpy as np
 import operator
@@ -141,132 +142,136 @@ class Links:
 
 class Data:
 
-    @staticmethod
-    def process_time_series(TS_data, time_points, gene_names, regulators='all', KO=None):
-        """ Reformat data for time series analysis 
-        
-        """
-        ngenes = len(gene_names)
-        # apply knockout 
-        if KO is not None:
-            KO_indices = []
-            for gene in KO:
-                KO_indices.append(gene_names.index(gene))
+    def __init__(
+            self,
+            gene_names,
+            ss_data,
+            ts_data,
+            time_points,
+            regulators='all',
+            perturbations=None,
+            KO=None,
+            test_size: float = 0.25,
+            h: int = 1,
+            random_state = None,
+            verbose: bool = True,
+            **specs
+    ):
+        self.gene_names = gene_names
+        self.ss_data = ss_data
+        self.ts_data = ts_data
+        self.time_points = time_points
+
+        # Lag used for the finite approximation of the derivative of the target gene expression
+        self.h: int = int(h)
+
+        self.test_size: float = test_size
+        self.verbose: bool = verbose
+        self.random_state = random_state
+        self.specs = specs
+        self.KO = KO
+        self.regulators = regulators
+        self.perturbations = perturbations
+        self.n_genes = len(self.gene_names)
+
+        # Knock-outs
+        self.ko_indices = []
+        if self.KO is not None:
+            for gene in self.KO:
+                self.ko_indices.append(gene_names.index(gene))
 
         # Re-order time points in increasing order
-        for (i, tp) in enumerate(time_points):
+        for (i, tp) in enumerate(self.time_points):
             tp = np.array(tp, np.float32)
             indices = np.argsort(tp)
             time_points[i] = tp[indices]
-            expr_data = TS_data[i]
-            TS_data[i] = expr_data[indices, :]
-        # obtain X and y for each target in a n_sample * n_feature, where n_sample is (n_exp*n_time - n_exp)
-        Xs = []
-        ys = []
-        h = 1  # lag used for the finite approximation of the derivative of the target gene expression
+            expr_data = self.ts_data[i]
+            self.ts_data[i] = expr_data[indices, :]
 
-        for i_gene in range(ngenes):
-            if regulators == 'all':
-                input_idx = list(range(ngenes))
-            else:
-                input_idx = regulators[i_gene]
-            try:
-                input_idx.remove(KO_indices[i_gene])
-            except UnboundLocalError:
-                pass
-            nexp = len(TS_data)
-            nsamples_time = sum([expr_data.shape[0] for expr_data in TS_data])
-            ninputs = len(input_idx)
+    def process_time_series(self, i_gene: int, h: int = 1) -> Tuple[np.ndarray, np.ndarray]:
+        """ Reformat data for time series analysis 
+        
+        """
 
-            # Time-series data
-            input_matrix_time = np.zeros((nsamples_time - h * nexp, ninputs))
-            output_vect_time = []
+        if self.regulators == 'all':
+            input_idx = list(range(self.n_genes))
+        else:
+            input_idx = self.regulators[i_gene]
 
-            for (i, exp_timeseries) in enumerate(TS_data):
-                exp_time_points = time_points[i]
-                n_time = exp_timeseries.shape[0]
-                exp_time_diff = exp_time_points[h:] - exp_time_points[:n_time - h]
-                exp_timeseries_x = exp_timeseries[:n_time - h, input_idx]
-                # current_timeseries_output = (exp_timeseries[h:,i_gene] - exp_timeseries[:n_time-h,i_gene]) / exp_time_diff + alphas[i_gene]*exp_timeseries[:n_time-h,i_gene]
-                for ii in range(len(exp_time_diff)):
-                    f_dy_dt = lambda alpha_i, i=i, ii=ii, i_gene=i_gene: float(
-                        (TS_data[i][ii + 1:ii + 2, i_gene] - TS_data[i][ii:ii + 1, i_gene]) / exp_time_diff[
-                            ii] + alpha_i * TS_data[i][ii:ii + 1, i_gene])
-                    output_vect_time.append(f_dy_dt)
+        # TODO: Not sure I understand what was supposed to be done here
+        #try:
+        #    input_idx.remove(self.ko_indices[i_gene])
+        #except UnboundLocalError:
+        #    pass
 
-                exp_n_samples = exp_timeseries_x.shape[0]
-                input_matrix_time[i * exp_n_samples:(i + 1) * exp_n_samples, :] = exp_timeseries_x
+        nexp = len(self.ts_data)
+        nsamples_time = sum([expr_data.shape[0] for expr_data in self.ts_data])
+        ninputs = len(input_idx)
 
-            Xs.append(input_matrix_time)
-            ys.append(output_vect_time)
+        # Time-series data
+        X = np.zeros((nsamples_time - h * nexp, ninputs))
+        y = []
+        for (i, exp_timeseries) in enumerate(self.ts_data):
+            exp_time_points = self.time_points[i]
+            n_time = exp_timeseries.shape[0]
+            exp_time_diff = exp_time_points[h:] - exp_time_points[:n_time - h]
+            exp_timeseries_x = exp_timeseries[:n_time - h, input_idx]
+            # current_timeseries_output = (exp_timeseries[h:,i_gene] - exp_timeseries[:n_time-h,i_gene]) / exp_time_diff + alphas[i_gene]*exp_timeseries[:n_time-h,i_gene]
+            for ii in range(len(exp_time_diff)):
+                f_dy_dt = lambda alpha_i, i=i, ii=ii, i_gene=i_gene: float(
+                    (self.ts_data[i][ii + 1:ii + 2, i_gene] - self.ts_data[i][ii:ii + 1, i_gene]) / exp_time_diff[
+                        ii] + alpha_i * self.ts_data[i][ii:ii + 1, i_gene])
+                y.append(f_dy_dt)
 
-        return Xs, ys
+            exp_n_samples = exp_timeseries_x.shape[0]
+            X[i * exp_n_samples:(i + 1) * exp_n_samples, :] = exp_timeseries_x
+        y = np.asarray(y)
+        return X, y
 
-    @staticmethod
-    def process_static(SS_data, gene_names, regulators='all', perturbations=None, KO=None):
+    def process_static(self, i_gene: int) -> Tuple[np.ndarray, np.ndarray]:
         """ Reformat data for static analysis 
         SS_data -- static data in the format n_samples*n_genes
         perturbations -- initial changes to the genes such as adding certain values. n_samples*n_genes
         KO -- the list of knock-out gene names. For now, each row has 1 gene name. TODO: one gene for all samples; more than one genes for one sample
-        
-        output:
-        Xs -- X inputs for each gene. n_genes*n_samples*n_genes 
-        ys -- Y for each gene. n_genes*n_samples
         """
-        ngenes = len(SS_data[0])
-        # obtain X and y for each target in a n_sample * n_feature
-        Xs = []
-        ys = []
 
-        ko_indices = []
-        if KO is not None:
-            for gene in KO:
-                ko_indices.append(gene_names.index(gene))
+        if self.regulators == 'all':
+            input_idx = list(range(self.n_genes))
+        else:
+            input_idx = self.regulators[i_gene]
 
-        for i_gene in range(ngenes):
-            if regulators == 'all':
-                input_idx = list(range(ngenes))
+        # TODO: Not sure I understand what was supposed to be done here
+        #try:
+        #    input_idx.remove(self.ko_indices[i_gene])
+        #except UnboundLocalError:
+        #    pass
+
+        X = self.ss_data[:, input_idx]
+
+        y = []
+        for i_sample, sample_data in enumerate(self.ss_data):
+            # add perturbations
+            if self.perturbations is not None:
+                f_dy_dt = float(self.ss_data[i_sample][i_gene]) - float(self.perturbations[i_sample][i_gene])
             else:
-                input_idx = regulators[i_gene]
-            try:
-                input_idx.remove(ko_indices[i_gene])
-            except UnboundLocalError:
-                pass
-            X = SS_data[:, input_idx]
-            
-            Xs.append(X)
-            y = []
-            for i_sample, sample_data in enumerate(SS_data):
-                # add perturbations
-                if perturbations is not None:
-                    f_dy_dt = float(SS_data[i_sample][i_gene]) - float(perturbations[i_sample][i_gene]) 
-                else:
-                    f_dy_dt = float(SS_data[i_sample][i_gene])
-                y.append(f_dy_dt)
-            ys.append(y)
-        return Xs, ys
+                f_dy_dt = float(self.ss_data[i_sample][i_gene])
+            y.append(f_dy_dt)
+        y = np.asarray(y)
+        return X, y
 
-    @staticmethod
-    def process(TS_data=None, SS_data=None, time_points=None, gene_names=None, regulators='all', KO=None, verbose=True):
+    def __getitem__(self, i_gene: int) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """ Reformats the raw data for both static and dynamic analysis
 
         For time series data, TS_data should be in n_exp*n_time*n_genes format. For For static analysis, 
         SS_data should be in n_samples * n_genes.
-        
-        Arguments:
-        TS_data --
-        KO -- knock-out genes. Either a single list (repeated experiments) or a list of lists (different across experiments)  
-
-        Return: 
-        Xs -- A list of training inputs for each target gene, each item has n_samples * n_regulators format. For dynamic analysis, n_samples = n_exp*n_time - n_exp.
-        y -- A list of training outputs for each target gene, each item has n_samples. For dynamic analysis, n_samples = n_exp*n_time - n_exp.
         """
         # Check input arguments
+        # TODO: useless
         dynamic_flag = False
         static_flag = False
-        if TS_data is not None:
+        if self.ts_data is not None:
             dynamic_flag = True
-        if SS_data is not None:
+        if self.ts_data is not None:
             static_flag = True
         # if dynamic_flag and not isinstance(TS_data,(list,tuple)):
         #     raise ValueError('TS_data must be a list of lists')
@@ -276,62 +281,55 @@ class Data:
         # TODO: check the inputs
 
         # TODO: add KO to time series data
-        if TS_data is not None:
-            Xs_d, ys_d = Data.process_time_series(TS_data, time_points, gene_names, regulators, KO)
-            verboseprint(verbose,
-                         f'dynamic data: ngenes: {len(ys_d)}, nsamples: {len(ys_d[0])}, n regulators: {len(Xs_d[0][0])}')
-        if SS_data is not None:
-            Xs_s, ys_s = Data.process_static(SS_data, gene_names, regulators, KO)
-            verboseprint(verbose,
-                         f'static data: ngenes: {len(ys_s)}, nsamples: {len(ys_s[0])}, n regulators: {len(Xs_s[0][0])}')
 
-        # combine static and dynamic data
-        if TS_data is not None and SS_data is not None:
-            Xs = [np.concatenate((X_s, X_d), axis=0) for X_s, X_d in zip(Xs_s, Xs_d)]
-            ys = [np.concatenate((y_s, y_d), axis=0) for y_s, y_d in zip(ys_s, ys_d)]
-        elif TS_data is not None:
-            Xs = Xs_d
-            ys = ys_d
-        elif SS_data is not None:
-            Xs = Xs_s
-            ys = ys_s
-        else:
+        X, y = [], []
+        if self.ts_data is not None:
+            X_d, y_d = self.process_time_series(i_gene, h=self.h)
+            #verboseprint(
+            #    self.verbose,
+            #    f'dynamic data: ngenes: {len(ys_d)}, nsamples: {len(ys_d[0])}, n regulators: {len(Xs_d[0][0])}'
+            #)
+            X.append(X_d)
+            y.append(y_d)
+        if self.ss_data is not None:
+            X_s, y_s = self.process_static(i_gene)
+            #verboseprint(
+            #    self.verbose,
+            #    f'static data: ngenes: {len(ys_s)}, nsamples: {len(ys_s[0])}, n regulators: {len(Xs_s[0][0])}'
+            #)
+            X.append(X_s)
+            y.append(y_s)
+
+        # Combine static and dynamic data
+        if (self.ts_data is None) and (self.ss_data is None):
             raise ValueError('Static and dynamic data are both None')
-        Xs = np.array(Xs)
-        ys = np.array(ys)
-        return Xs, ys
+        X = np.concatenate(X, axis=0)
+        y = np.concatenate(y, axis=0)
+
+        # Split data in train/validation sets
+        X_train, X_test, y_train, y_test = model_selection.train_test_split(
+            X, y, test_size=self.test_size, random_state=self.random_state)
+
+        # TODO: Resample?
+        # X_train, y_train = Data.resample(X_train, y_train, n_samples = bootstrap_fold*len(y), random_state=self.random_state)
+        # X_test, y_test = Data.resample(X_test, y_test, n_samples = bootstrap_fold*len(y), random_state=self.random_state)
+
+        return X_train, X_test, y_train, y_test
 
     @staticmethod
-    def train_test_split(Xs, ys, test_size=0.25, **specs):
-        """ Splits the data into train and test portion based on each gene """
-        n_genes = len(Xs)
-        Xs_train = [0 for i in range(n_genes)]
-        ys_train = [0 for i in range(n_genes)]
-        Xs_test = [0 for i in range(n_genes)]
-        ys_test = [0 for i in range(n_genes)]
-        if test_size == None:
-            return types_.DataType(Xs, ys)
-        else:
-            for i, (X, y) in enumerate(zip(Xs, ys)):
-                Xs_train[i], Xs_test[i], ys_train[i], ys_test[i] = model_selection.train_test_split(
-                        X, y, test_size=test_size, **specs)
-            return types_.DataType(Xs_train, ys_train, Xs_test, ys_test)
-
-    @staticmethod
-    def resample(Xs, ys, n_samples=None, replace=True, **specs):
+    def resample(X, y, n_samples, replace=True, **specs) -> Tuple[np.ndarray, np.ndarray]:
         """resampling for bootstraping"""
         if n_samples is None:
-            n_samples = 2 * len(ys[0])
+            n_samples = 2 * len(y)
 
-        Xs_b, ys_b = [], []
-        for X, y in zip(Xs, ys):
-            X_sparse = sparse.coo_matrix(X)
-            X_b, _, y_b = utils.resample(X, X_sparse, y, n_samples=n_samples, replace=replace, **specs)
-            # XX = utils.resample((X,y), n_samples = n_samples, replace=replace)
-            # print(len(XX[0]))
-            Xs_b.append(X_b)
-            ys_b.append(y_b)
-        return Xs_b, ys_b
+        X_sparse = sparse.coo_matrix(X)
+        X_b, _, y_b = utils.resample(X, X_sparse, y, n_samples=n_samples, replace=replace, **specs)
+        # XX = utils.resample((X,y), n_samples = n_samples, replace=replace)
+        # print(len(XX[0]))
+        return X_b, y_b
+
+    def __len__(self) -> int:
+        return self.n_genes
 
 
 class Settings:
@@ -418,23 +416,27 @@ class Benchmark:
         return exp_data, per_data, gene_names
 
     @staticmethod
-    def process_data(TS_data, SS_data, time_points, gene_names, estimator_t, **specs):
-        Xs, ys = Data.process(TS_data=TS_data, SS_data=SS_data, gene_names=gene_names, time_points=time_points, **specs)
+    def process_data(ts_data, ss_data, time_points, gene_names, estimator_t, **specs) -> Data:
         pp = Settings.default(estimator_t)
-        out_data = Data.train_test_split(Xs, ys, test_size=pp.test_size, random_state=pp.random_state_data, **specs)
-        # Xs_train, ys_train = Data.resample(Xs_train, ys_train, n_samples = bootstrap_fold*len(ys[0]), random_state=random_state_data)
-        # Xs_test, ys_test = Data.resample(Xs_test, ys_test, n_samples = bootstrap_fold*len(ys[0]), random_state=random_state)
-        return out_data
+        return Data(
+            gene_names,
+            ss_data,
+            ts_data,
+            time_points,
+            test_size=pp.test_size,
+            random_state=pp.random_state_data,
+            **specs
+        )
 
     @staticmethod
-    def process_data_dream4(size, network, estimator_t, **specs):
-        TS_data, time_points, SS_data, gene_names = Benchmark.f_data_dream4(size, network)
-        return Benchmark.process_data(TS_data, SS_data, time_points, gene_names, estimator_t, **specs)
+    def process_data_dream4(size, network, estimator_t: str, **specs) -> Data:
+        ts_data, time_points, ss_data, gene_names = Benchmark.f_data_dream4(size, network)
+        return Benchmark.process_data(ts_data, ss_data, time_points, gene_names, estimator_t, **specs)
 
     @staticmethod
-    def process_data_GRNbenchmark(method, noise_level, network, estimator_t, **specs):
-        SS_data, KO, gene_names = Benchmark.f_data_GRN(method, noise_level, network)
-        return Benchmark.process_data(None, SS_data, None, gene_names, estimator_t)
+    def process_data_grn_benchmark(method, noise_level, network, estimator_t: str, **specs) -> Data:
+        ss_data, _, gene_names = Benchmark.f_data_GRN(method, noise_level, network)
+        return Benchmark.process_data(None, ss_data, None, gene_names, estimator_t)
 
 
 class GOF:

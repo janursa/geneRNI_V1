@@ -22,8 +22,7 @@ def dream4_single(specs, estimator_t, size, network):
     out_data = tools.Benchmark.process_data_dream4(size=size, network=network, estimator_t=estimator_t)
     out_defaults = tools.Settings.default(estimator_t=estimator_t)
     best_scores, best_params, best_ests, sampled_permts = search_param.rand_search(
-        Xs=out_data.Xs_train,
-        ys=out_data.ys_train,
+        out_data,
         param=out_defaults.param,
         param_grid=out_defaults.param_grid,
         **specs

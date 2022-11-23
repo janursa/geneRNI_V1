@@ -22,7 +22,7 @@
 from typing import Dict, Any
 
 import numpy as np
-from sklearn.linear_model import Ridge, SGDRegressor
+from sklearn.linear_model import SGDRegressor
 
 from geneRNI.models import BaseWrapper
 
