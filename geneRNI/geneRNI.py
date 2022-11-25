@@ -53,11 +53,16 @@ def network_inference(data: Data, gene_names, param, param_unique=None, verbose=
     train_scores, test_scores, oob_scores = [], [], []
     for i in range(n_genes):
         X_train, X_test, y_train, y_test = data[i]
+
+        # Estimate train and test scores to assess generalization abilities
         ests[i].fit(X_train, y_train)
         train_scores.append(ests[i].score(X_train, y_train))
         test_scores.append(ests[i].score(X_test, y_test))
         if param['estimator_t'] == 'RF':
             oob_scores.append(ests[i].est.oob_score_)
+
+        # Actual network inference, using all the available data
+        ests[i].fit(np.concatenate((X_train, X_test), axis=0), np.concatenate((y_train, y_test), axis=0))
         links.append(ests[i].compute_feature_importances())
 
     # Show scores
