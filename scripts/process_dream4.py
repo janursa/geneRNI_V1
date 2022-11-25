@@ -35,10 +35,10 @@ def dream4_single(estimator_t, size, network):
     
     # calculate PR and ROC AUCs
     golden_links = tools.Benchmark.f_golden_dream4(size, network)
-    precision, recall, average_precision, average_precision_overall = tools.GOF.calculate_PR(gene_names, links, golden_links, details=True)
+    average_precision = tools.GOF.calculate_PR(gene_names, links, golden_links)
     auc_roc = tools.GOF.calculate_auc_roc(gene_names, links, golden_links)
     print(f'completed {size} {network}')
-    return size, network, best_params, score, average_precision_overall, auc_roc
+    return size, network, best_params, score, average_precision, auc_roc
 
 
 def map_run(args):
@@ -60,7 +60,7 @@ if __name__ == '__main__':
     n_jobs = args.n_jobs
     estimator_t = args.estimator
 
-    sizes = [10]
+    sizes = [100]
     networks = [1, 2, 3, 4, 5]
     # create all the cases by combining sizes and networks
     permuts = list(itertools.product(sizes, networks))

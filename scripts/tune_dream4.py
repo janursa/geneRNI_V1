@@ -3,6 +3,7 @@ import argparse
 import os
 import pathlib
 import sys
+import time
 
 import numpy as np
 import pandas as pd
@@ -76,5 +77,7 @@ if __name__ == '__main__':
         cv=4,
         output_dir=os.path.join(dir_main, 'results')
     )
-    dream4_size10(specs, estimator_t)
-    # dream4_size100(specs, estimator_t)
+    # dream4_size10(specs, estimator_t)
+    t0 = time.time()
+    dream4_size100(specs, estimator_t)
+    print(f'Total running time: {time.time() - t0}')

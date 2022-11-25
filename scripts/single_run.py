@@ -39,7 +39,8 @@ if __name__ == '__main__':
 		out_data, gene_names=gene_names, param=out_default.param)
 	if True:  # scores on the golden links
 		golden_links = tools.Benchmark.f_golden_dream(size, network)
-		precision, recall, average_precision, average_precision_overall = tools.GOF.calculate_PR(gene_names, links, golden_links, details=True)
+		precision, recall, average_precision, average_precision_overall = tools.GOF.calculate_PR(
+			gene_names, links, golden_links, details=False)
 		print('Mean PR is ', average_precision_overall)
 	end = time.time()
 	print('lapsed time ', (end-start))

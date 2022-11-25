@@ -10,7 +10,7 @@ import os
 import sys
 import time
 import warnings
-from typing import Tuple
+from typing import Tuple, List
 
 import numpy as np
 import operator
@@ -25,6 +25,7 @@ from sklearn import model_selection
 from sklearn import utils
 
 from scipy import sparse
+from sklearn.preprocessing import StandardScaler, PowerTransformer
 
 from geneRNI.models import get_estimator_wrapper
 
@@ -314,6 +315,11 @@ class Data:
         # X_train, y_train = Data.resample(X_train, y_train, n_samples = bootstrap_fold*len(y), random_state=self.random_state)
         # X_test, y_test = Data.resample(X_test, y_test, n_samples = bootstrap_fold*len(y), random_state=self.random_state)
 
+        # Pre-processing
+        transformer = PowerTransformer(method='box-cox', standardize=True, copy=False)
+        transformer.fit_transform(X_train + 1e-15)
+        transformer.transform(X_test + 1e-15)
+
         return X_train, X_test, y_train, y_test
 
     @staticmethod
@@ -546,43 +552,35 @@ class GOF:
                 ax.set_xticklabels(tags)
 
     @staticmethod
-    def calculate_auc_roc(gene_names, links, golden_links, details=True, regulator_tag='Regulator', target_tag='Target',
-                     weight_tag='Weight') -> float:
-        # break the array into n parts, one for each gene
-        scores = np.array(np.split(np.array(links[weight_tag].tolist()), len(gene_names)))  # links
-        tests = np.array(np.split(np.array(golden_links[weight_tag].tolist()), len(gene_names)))  # golden
+    def to_matrix(df: pd.DataFrame, gene_names: List[str]) -> np.ndarray:
+        mapping = {gene_name: i for i, gene_name in enumerate(gene_names)}
+        mat = np.full((len(gene_names), len(gene_names)), np.nan, dtype=float)
+        idx_i = np.asarray([mapping[x] for x in df['Regulator'].tolist()], dtype=int)
+        idx_j = np.asarray([mapping[x] for x in df['Target'].tolist()], dtype=int)
+        weights = df['Weight'].to_numpy(dtype=float)
+        mat[idx_i, idx_j] = weights
+        return mat
+
+    @staticmethod
+    def calculate_auc_roc(gene_names: List[str], links: pd.DataFrame, golden_links: pd.DataFrame) -> float:
+        scores = GOF.to_matrix(links, gene_names)
+        tests = GOF.to_matrix(golden_links, gene_names)
+        mask = ~np.isnan(tests)
+        scores, tests = scores[mask], tests[mask]
         return metrics.roc_auc_score(tests, scores)
 
     @staticmethod
-    def calculate_PR(gene_names, links, golden_links, details=True, regulator_tag='Regulator', target_tag='Target',
-                     weight_tag='Weight'):
+    def calculate_PR(gene_names: List[str], links: pd.DataFrame, golden_links: pd.DataFrame) -> float:
         """ Compute precision recall 
      
         links -- sorted links as G1->G2, in a df format
         golden_links -- sorted golden links as G1->G2, in a df format
-        details -- if True, detailed precision recall is calculated. If false, only the average for overall network is outputed
-     
         """
-        # break the array into n parts, one for each gene
-        scores = np.array(np.split(np.array(links[weight_tag].tolist()), len(gene_names)))  # links
-        tests = np.array(np.split(np.array(golden_links[weight_tag].tolist()), len(gene_names)))  # golden
-
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore')
-
-            precision = dict()
-            recall = dict()
-            average_precision = dict()
-            if details:
-                for gene, score, test in zip(gene_names, scores, tests):
-                    precision[gene], recall[gene], _ = metrics.precision_recall_curve(test, score)
-                    average_precision[gene] = metrics.average_precision_score(test, score)
-
-                precision["micro"], recall["micro"], _ = metrics.precision_recall_curve(
-                    tests.ravel(), scores.ravel()
-                )
-            average_precision['micro'] = metrics.average_precision_score(tests, scores, average="micro")
-        return precision, recall, average_precision, average_precision['micro']
+        scores = GOF.to_matrix(links, gene_names)
+        tests = GOF.to_matrix(golden_links, gene_names)
+        mask = ~np.isnan(tests)
+        scores, tests = scores[mask], tests[mask]
+        return metrics.average_precision_score(tests, scores)
 
     @staticmethod
     def PR_curve_gene(gene_names, recall, precision, average_precision):
