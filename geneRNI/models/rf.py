@@ -30,7 +30,7 @@ from geneRNI.models import BaseWrapper
 class RFWrapper(BaseWrapper):
 
     @staticmethod
-    def new_estimator(*args, **kwargs) -> RandomForestRegressor:
+    def new_estimator(**kwargs) -> RandomForestRegressor:
         return RandomForestRegressor(oob_score=True, **kwargs)
 
     @staticmethod

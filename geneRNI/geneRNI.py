@@ -35,7 +35,7 @@ sys.path.insert(0, dir_main)  # TODO: not recommended (let's make a setup.py fil
 # TODOC: pathos is used instead of multiprocessing, which is an external dependency. 
 #        This is because multiprocessing uses pickle that has problem with lambda function.
 
-def network_inference(Xs, ys, gene_names, param, param_unique=None, Xs_test=None, ys_test=None, verbose=True, output_dir=None):
+def network_inference(Xs, ys, gene_names, param, param_unique=None, Xs_test=None, ys_test=None, verbose=False, output_dir=None):
     """ Determines links of network inference
     If the ests are given, use them instead of creating new ones.
 
@@ -54,14 +54,14 @@ def network_inference(Xs, ys, gene_names, param, param_unique=None, Xs_test=None
     
     # train score
     train_scores = [ests[i].score(X, y) for i, (X, y) in enumerate(zip(Xs, ys))]
-    tools.verboseprint(verbose, f'\nnetwork inference: train score, mean: {np.mean(train_scores)} std: {np.std(train_scores)}')
+    tools.verboseprint(verbose, f'\nnetwork inference: train score, mean: {round(np.mean(train_scores),3)} std: {round(np.std(train_scores),3)}')
     # print(f'\nnetwork inference: train score, mean: {np.mean(train_scores)} std: {np.std(train_scores)}')
     # oob score
     if param['estimator_t'] == 'RF':
         oob_scores = [est.est.oob_score_ for est in ests]  
         tools.verboseprint(
             verbose,
-            f'network inference: oob score (only RF), mean: {np.mean(oob_scores)} std: {np.std(oob_scores)}')
+            f'network inference: oob score (only RF), mean: {round(np.mean(oob_scores),3)} std: {round(np.std(oob_scores),3)}')
     else:
         oob_scores = None
     # test score
@@ -135,7 +135,8 @@ class GeneEstimator(base.RegressorMixin):
 
         self.X_ = X
         self.y_ = y
-        self.est = get_estimator_wrapper(self.estimator_t).new_estimator()
+
+        self.est = get_estimator_wrapper(self.estimator_t).new_estimator(**self.params) #TODO: how do you pass the params
         self.est.fit(X, self.check_target(y))
         return self
 

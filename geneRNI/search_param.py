@@ -143,11 +143,6 @@ def search(Xs, ys, param, param_grid, permts, n_jobs, output_dir=None, **specs):
             best_params = [permts[i] for i in best_indices]
     time_end = time.time()
     print('Param search is completed in %.3f seconds' % (time_end-time_start))
-    if output_dir is not None:
-        with open(os.path.join(output_dir, 'best_params.txt'), 'w') as f:
-            print({'best_params': best_params}, file=f)
-        with open(os.path.join(output_dir, 'best_scores.txt'), 'w') as f:
-            print({'best_scores': best_scores}, file=f)
     return best_scores, best_params, best_ests
 
 
@@ -180,7 +175,7 @@ def grid_search(Xs, ys, param, param_grid, n_jobs=1, **specs):
     return search(Xs, ys, param, param_grid, permts=permts, n_jobs=n_jobs, **specs)
 
 
-def rand_search(Xs, ys, param, param_grid, n_jobs=1, n_sample=60, output_dir=None, **specs):
+def rand_search(Xs, ys, param, param_grid, n_jobs=1, n_sample=60,output_dir=None, **specs):
     # print('Grid params:', param_grid)
     permts = permutation(param_grid, output_dir)
     print('stats: %d genes %d permts %d threads' % (Xs[0].shape[1], len(permts), n_jobs))
@@ -188,17 +183,18 @@ def rand_search(Xs, ys, param, param_grid, n_jobs=1, n_sample=60, output_dir=Non
         sampled_permts = permts
     else:
         sampled_permts = random.sample(permts, n_sample)
+
+    sampled_permts_sorted = {key: [item[key] for item in sampled_permts] for key in param_grid.keys()}
     if output_dir is not None:
         with open(os.path.join(output_dir, 'sampled_permts.txt'), 'w') as f:
             print({'permts': sampled_permts}, file=f)
-    sampled_permts_sorted = {key: [item[key] for item in sampled_permts] for key in param_grid.keys()}
     print(f'Running {len(sampled_permts)} samples randomly')
 
-    best_scores, best_params, best_ests = search(Xs, ys, param, param_grid, permts=sampled_permts, n_jobs=n_jobs, output_dir=output_dir, **specs)
+    best_scores, best_params, best_ests = search(Xs, ys, param, param_grid, permts=sampled_permts, n_jobs=n_jobs, **specs)
     return best_scores, best_params, best_ests, sampled_permts_sorted
 
 
-def rand_search_partial(Xs, ys, param, param_grid, n_genes, n_jobs = 1, n_sample=60, output_dir=None, **specs):
+def rand_search_partial(Xs, ys, param, param_grid, n_genes, n_jobs = 1, n_sample=60, **specs):
     """Conducts random search on hyper-parameters, only partially on n_genes, randomly selected from all genes"""
     permts = permutation(param_grid, output_dir)
     print(f'partial rand search on {n_genes} genes with permts {len(permts)}  threads {n_jobs}')
@@ -206,9 +202,6 @@ def rand_search_partial(Xs, ys, param, param_grid, n_genes, n_jobs = 1, n_sample
         sampled_permts = permts
     else:
         sampled_permts = random.sample(permts, n_sample)
-    if output_dir is not None:
-        with open(os.path.join(output_dir, 'sampled_permts.txt'), 'w') as f:
-            print({'permts': sampled_permts}, file=f)
     sampled_permts_sorted = {key: [item[key] for item in sampled_permts] for key in param_grid.keys()}
     print(f'Running {len(sampled_permts)} samples randomly')
     # choose n genes randomly from all genes

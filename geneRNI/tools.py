@@ -144,13 +144,13 @@ class Data:
         """ Reformat data for time series analysis 
         
         """
+        #TODO: check the inputs
         ngenes = len(gene_names)
         # apply knockout 
         if KO is not None:
             KO_indices = []
             for gene in KO:
                 KO_indices.append(gene_names.index(gene))
-
         # Re-order time points in increasing order
         for (i, tp) in enumerate(time_points):
             tp = np.array(tp, np.float32)
@@ -460,7 +460,7 @@ class GOF:
     @staticmethod
     def boxplot_scores_group(scores_stack, tags=None, title=None, xlabel=''):
         """plots scores as a box plot for a set"""
-        fig, ax = plt.subplots(1, 1, tight_layout=True)
+        fig, ax = plt.subplots(1, 1, tight_layout=True, figsize=(8,4))
         ax.boxplot(scores_stack, showfliers=True)
         ax.set_ylabel('Score')
         ax.set_xlabel(xlabel)
