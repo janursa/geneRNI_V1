@@ -20,6 +20,7 @@ from sklearn import utils
 
 from geneRNI import tools
 from geneRNI.models import get_estimator_wrapper
+from geneRNI.tools import Data
 from geneRNI.utils import is_lambda_function
 
 dir_main = os.path.join(pathlib.Path(__file__).parent.resolve(), '..')
@@ -35,13 +36,12 @@ sys.path.insert(0, dir_main)  # TODO: not recommended (let's make a setup.py fil
 # TODOC: pathos is used instead of multiprocessing, which is an external dependency. 
 #        This is because multiprocessing uses pickle that has problem with lambda function.
 
-def network_inference(Xs, ys, gene_names, param, param_unique=None, Xs_test=None, ys_test=None, verbose=False, output_dir=None):
+
+def network_inference(data: Data, gene_names, param, param_unique=None, verbose=True, output_dir=None):
     """ Determines links of network inference
     If the ests are given, use them instead of creating new ones.
-
-    Xs -- 
     """
-    n_genes = len(ys)
+    n_genes = len(data)
     
     if param_unique is None:
         ests = [GeneEstimator(**param) for _ in range(n_genes)]
@@ -49,40 +49,35 @@ def network_inference(Xs, ys, gene_names, param, param_unique=None, Xs_test=None
         ests = [GeneEstimator(**{**param, **param_unique}) for _ in range(n_genes)]
     else: 
         ests = [GeneEstimator(**{**param, **param_unique[i]}) for i in range(n_genes)]
-    for i, (X, y) in enumerate(zip(Xs, ys)):
-        ests[i].fit(X, y)
-    
-    # train score
-    train_scores = [ests[i].score(X, y) for i, (X, y) in enumerate(zip(Xs, ys))]
-    tools.verboseprint(verbose, f'\nnetwork inference: train score, mean: {round(np.mean(train_scores),3)} std: {round(np.std(train_scores),3)}')
-    # print(f'\nnetwork inference: train score, mean: {np.mean(train_scores)} std: {np.std(train_scores)}')
-    # oob score
-    if param['estimator_t'] == 'RF':
-        oob_scores = [est.est.oob_score_ for est in ests]  
-        tools.verboseprint(
-            verbose,
-            f'network inference: oob score (only RF), mean: {round(np.mean(oob_scores),3)} std: {round(np.std(oob_scores),3)}')
-    else:
-        oob_scores = None
-    # test score
-    if Xs_test is not None or ys_test is not None:
-        test_scores = [ests[i].score(X, y) for i, (X, y) in enumerate(zip(Xs_test, ys_test))]
-        tools.verboseprint(
-            verbose,
-            f'network inference: test score, mean: {np.mean(test_scores)} std: {np.std(test_scores)}')
-    else:
-        test_scores = None
-    # feature importance #TODO: fix this
-    # if Xs_test is not None:
-    #     print('Permutation based feature importance')
-    #     links_p = [ests[i].compute_feature_importance_permutation(X,y) for i, (X, y) in enumerate(zip(Xs_test,ys_test))]
-    # else:
-    #     print('Variance based feature importance')
-    #     links_v = [ests[i].compute_feature_importances_tree() for i,_ in enumerate(ys)]
-    # links = links_p
-    links = [ests[i].compute_feature_importances() for i, _ in enumerate(ys)]
-    links_df = tools.Links.format(links, gene_names)
 
+    links = []
+    train_scores, test_scores, oob_scores = [], [], []
+    for i in range(n_genes):
+        X_train, X_test, y_train, y_test = data[i]
+
+        # Estimate train and test scores to assess generalization abilities
+        ests[i].fit(X_train, y_train)
+        train_scores.append(ests[i].score(X_train, y_train))
+        test_scores.append(ests[i].score(X_test, y_test))
+        if param['estimator_t'] == 'RF':
+            oob_scores.append(ests[i].est.oob_score_)
+
+        # Actual network inference, using all the available data
+        ests[i].fit(np.concatenate((X_train, X_test), axis=0), np.concatenate((y_train, y_test), axis=0))
+        links.append(ests[i].compute_feature_importances())
+
+    # Show scores
+    tools.verboseprint(verbose, f'\nnetwork inference: train score, mean: {np.mean(train_scores)} std: {np.std(train_scores)}')
+    tools.verboseprint(
+        verbose,
+        f'network inference: test score, mean: {np.mean(test_scores)} std: {np.std(test_scores)}')
+    if len(oob_scores) > 0:
+        tools.verboseprint(
+            verbose,
+            f'network inference: oob score (only RF), mean: {np.mean(oob_scores)} std: {np.std(oob_scores)}')
+
+    # Save predicted regulatory relations
+    links_df = tools.Links.format(links, gene_names)
     if output_dir is not None:
         links_df.to_csv(os.path.join(output_dir, 'links.txt'))
 

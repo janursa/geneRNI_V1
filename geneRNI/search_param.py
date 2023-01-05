@@ -17,6 +17,7 @@ from pathos.pools import ParallelPool as Pool
 from sklearn import model_selection
 
 from .geneRNI import GeneEstimator
+from .tools import Data
 
 
 def evaluate_single(X: np.ndarray, y: np.ndarray, param: dict, cv: int = 4, train_flag=False, **specs) -> Tuple[GeneEstimator, float]:
@@ -77,6 +78,10 @@ def grid_search_single_permut(Xs, ys, param: dict, permt: dict, cv: int = 4, **s
 def map_gene(args):
     """ maps the args to the grid search function for single target, used for multi threating """
     i = args['i']  # index of each target
+    data = args['data']
+    X_train, _, y_train, _ = data[i]
+    args['X'] = X_train
+    args['y'] = y_train
     args_rest = {key: value for key, value in args.items() if key != 'i'}
     return i, grid_search_single_gene(**args_rest)
 
@@ -84,35 +89,38 @@ def map_gene(args):
 def map_permut(args):
     """ maps the args to the grid search function for single permutation of param, used for multi threating """
     i = args['i']  # index of each target
+    data = args['data']
+    X_train, _, y_train, _ = data[i]
+    args['X'] = X_train
+    args['y'] = y_train
     args_rest = {key: value for key, value in args.items() if key != 'i'}
     return i, grid_search_single_permut(**args_rest)
 
 
-def search(Xs, ys, param, param_grid, permts, n_jobs, output_dir=None, **specs):
+def search(data: Data, param, param_grid, permts, n_jobs, output_dir=None, **specs):
     """Evaluates the permts and returns the best results for each gene """
     time_start = time.time()
     if 'n_jobs' in param: 
         del param['n_jobs']
-    n_genes = len(ys)
-    # run the search
+    n_genes = len(data)
+
+    # Run the search
     best_scores = [None for _ in range(n_genes)]
     best_params = [None for _ in range(n_genes)]
     best_ests = [None for _ in range(n_genes)]
     if n_jobs == 1:  # serial
-        map_input = [{'i': i, 'X': Xs[i], 'y': ys[i], 'param': param, 'permts': permts, **specs} for i in range(n_genes)]
-        all_output = list(map(map_gene, map_input))
-        all_output.sort(key=lambda x: x[0])
-        for i_gene, output in enumerate(all_output):  # an output for a gene
+        for i in range(n_genes):
+            output = map_gene({'i': i, 'data': data, 'param': param, 'permts': permts, **specs})
             best_score, best_param, best_est = output[1]
-            best_scores[i_gene] = best_score
-            best_params[i_gene] = best_param
-            best_ests[i_gene] = best_est
+            best_scores[i] = best_score
+            best_params[i] = best_param
+            best_ests[i] = best_est
     else:  # parallel
         # multithreading happens either on gene_n or permuts, depending which one is bigger
         pool = Pool(n_jobs)
         if n_genes >= len(permts):
             print('Gene-based multi threading')
-            map_input = [{'i': i, 'X': Xs[i], 'y': ys[i], 'param': param, 'permts': permts, **specs} for i in range(n_genes)]
+            map_input = [{'i': i, 'data': data, 'param': param, 'permts': permts, **specs} for i in range(n_genes)]
             all_output = pool.map(map_gene, map_input)
             all_output.sort(key=lambda x: x[0])
             for i_gene, output in enumerate(all_output):  # an output for a gene
@@ -122,7 +130,7 @@ def search(Xs, ys, param, param_grid, permts, n_jobs, output_dir=None, **specs):
                 best_ests[i_gene] = best_est
         else:  # when there is more permuts
             print('Permutation-based multi threading')
-            input_data = [{'i': i, 'Xs': Xs, 'ys': ys, 'param': param, 'permt': permts[i], **specs} for i in range(len(permts))]
+            input_data = [{'i': i, 'data': data, 'param': param, 'permt': permts[i], **specs} for i in range(len(permts))]
             all_output = pool.map(map_permut, input_data)
             try:
                 all_output.sort(key=lambda x: x[0])
@@ -175,10 +183,11 @@ def grid_search(Xs, ys, param, param_grid, n_jobs=1, **specs):
     return search(Xs, ys, param, param_grid, permts=permts, n_jobs=n_jobs, **specs)
 
 
-def rand_search(Xs, ys, param, param_grid, n_jobs=1, n_sample=60,output_dir=None, **specs):
+
+def rand_search(data: Data, param, param_grid, n_jobs=1, n_sample=60, output_dir=None, **specs):
     # print('Grid params:', param_grid)
     permts = permutation(param_grid, output_dir)
-    print('stats: %d genes %d permts %d threads' % (Xs[0].shape[1], len(permts), n_jobs))
+    print('stats: %d genes %d permts %d threads' % (len(data), len(permts), n_jobs))
     if len(permts) < n_sample:
         sampled_permts = permts
     else:
@@ -190,7 +199,7 @@ def rand_search(Xs, ys, param, param_grid, n_jobs=1, n_sample=60,output_dir=None
             print({'permts': sampled_permts}, file=f)
     print(f'Running {len(sampled_permts)} samples randomly')
 
-    best_scores, best_params, best_ests = search(Xs, ys, param, param_grid, permts=sampled_permts, n_jobs=n_jobs, **specs)
+    best_scores, best_params, best_ests = search(data, param, param_grid, permts=sampled_permts, n_jobs=n_jobs, output_dir=output_dir, **specs)
     return best_scores, best_params, best_ests, sampled_permts_sorted
 
 

@@ -18,9 +18,9 @@ from geneRNI import search_param
 pd.options.mode.chained_assignment = None
 
 
-def dream4_single(specs, estimator_t, size, network):
-    print(f'Running dream4 for network size {size}. network {network}, and estimator {estimator_t}')
-    out_data = tools.Benchmark.process_data_dream4(size=size, network=network, estimator_t=estimator_t)
+def dream5_single(specs, estimator_t, network):
+    print(f'Running dream5, network {network}, and estimator {estimator_t}')
+    out_data = tools.Benchmark.process_data_dream5(network=network, estimator_t=estimator_t)
     out_defaults = tools.Settings.default(estimator_t=estimator_t)
     best_scores, best_params, best_ests, sampled_permts = search_param.rand_search(
         out_data,
@@ -28,33 +28,24 @@ def dream4_single(specs, estimator_t, size, network):
         param_grid=out_defaults.param_grid,
         **specs
     )
-    print(f'{estimator_t} {size} {network} -> best score, mean: {np.mean(best_scores)} std: {np.std(best_scores)}')
+    print(f'{estimator_t} {network} -> best score, mean: {np.mean(best_scores)} std: {np.std(best_scores)}')
 
     # Create folder
-    folder = os.path.join(dir_main, f'results/dream4/{estimator_t}')
+    folder = os.path.join(dir_main, f'results/dream5/{estimator_t}')
     if not os.path.isdir(folder):
         os.makedirs(folder)
 
-    results_dir = f'{folder}/param_search_dream_{size}_{network}.txt'
+    results_dir = f'{folder}/param_search_dream_{network}.txt'
 
     with open(results_dir, 'w') as f:
         print({'best_scores': best_scores, 'best_params': best_params}, file=f)
 
 
-def dream4_size10(specs, estimator_t):
-    size = 10
-    networks = [1, 2, 3, 4, 5]
+def dream5(specs, estimator_t):
+    networks = [1, 3, 4]
     for network in networks:
-        dream4_single(specs, estimator_t, size, network)
-    print(f'Completed dream4 size {size}, estimator {estimator_t}')
-
-
-def dream4_size100(specs, estimator_t):
-    size = 100
-    networks = [1, 2, 3, 4, 5]
-    for network in networks:
-        dream4_single(specs, estimator_t, size, network)
-    print(f'Completed dream4 size {size}, estimator_t {estimator_t}')
+        dream5_single(specs, estimator_t, network)
+    print(f'Completed dream4, estimator_t {estimator_t}')
 
 
 if __name__ == '__main__':
@@ -79,5 +70,5 @@ if __name__ == '__main__':
     )
     # dream4_size10(specs, estimator_t)
     t0 = time.time()
-    dream4_size100(specs, estimator_t)
+    dream5(specs, estimator_t)
     print(f'Total running time: {time.time() - t0}')

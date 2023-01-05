@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-#  hgb.py
+#  linear.py
 #
 #  Copyright 2022 Antoine Passemiers <antoine.passemiers@gmail.com>
 #
@@ -22,38 +22,36 @@
 from typing import Dict, Any
 
 import numpy as np
-from sklearn.experimental import enable_hist_gradient_boosting
-from sklearn.ensemble import HistGradientBoostingRegressor
+from sklearn.linear_model import SGDRegressor
 
 from geneRNI.models import BaseWrapper
 
 
-class HGBWrapper(BaseWrapper):
+class SGDWrapper(BaseWrapper):
 
     @staticmethod
-    def new_estimator(*args, **kwargs) -> HistGradientBoostingRegressor:
-        return HistGradientBoostingRegressor(**kwargs)
+    def new_estimator(*args, **kwargs) -> SGDRegressor:
+        return SGDRegressor(**kwargs)
 
     @staticmethod
-    def compute_feature_importances(estimator: HistGradientBoostingRegressor) -> np.array:
-        # TODO: implement this
-        return np.array([e.tree_.compute_feature_importances(normalize=False)
-                                for e in estimator.estimators_])
+    def compute_feature_importances(estimator: SGDRegressor) -> np.array:
+        coef = np.abs(estimator.coef_)
+        assert len(coef.shape) == 1
+        return coef
 
     @staticmethod
     def get_default_parameters() -> Dict[str, Any]:
         return dict(
-            estimator_t='HGB',
-            min_samples_leaf=5,
-            learning_rate=.05,
-            # criterion = 'absolute_error',
-            max_iter=50,
+            estimator_t='sgd',
+            loss='squared_error',
+            penalty='l2',
+            alpha=0.0001
         )
 
     @staticmethod
     def get_grid_parameters() -> Dict[str, Any]:
         return dict(
-            learning_rate=np.arange(0.001, .2, .02),
-            min_samples_leaf=np.arange(1, 30, 2),
-            max_iter=np.arange(20, 200, 10),
+            loss=['squared_error', 'huber', 'epsilon_insensitive', 'squared_epsilon_insensitive'],
+            penalty=['l2', 'l1', 'elasticnet'],
+            alpha=10**np.arange(-6, 1),
         )
