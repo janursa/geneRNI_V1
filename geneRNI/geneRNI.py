@@ -20,7 +20,7 @@ from sklearn import utils
 
 from geneRNI import tools
 from geneRNI.models import get_estimator_wrapper
-from geneRNI.tools import Data
+from geneRNI.data import Data
 from geneRNI.utils import is_lambda_function
 
 dir_main = os.path.join(pathlib.Path(__file__).parent.resolve(), '..')

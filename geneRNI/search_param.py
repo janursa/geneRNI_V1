@@ -17,7 +17,7 @@ from pathos.pools import ParallelPool as Pool
 from sklearn import model_selection
 
 from .geneRNI import GeneEstimator
-from .tools import Data
+from .data import Data
 
 
 def evaluate_single(X: np.ndarray, y: np.ndarray, param: dict, cv: int = 4, train_flag=False, **specs) -> Tuple[GeneEstimator, float]:
@@ -64,7 +64,7 @@ def grid_search_single_gene(X: np.ndarray, y: np.ndarray, param: dict, permts: d
 
 
 def grid_search_single_permut(Xs, ys, param: dict, permt: dict, cv: int = 4, **specs):
-    """ evalute all genes for the one permutation of param, and returns the best fit """
+    """ evalute all genes for the one permutation of param """
     param_a = {**param, **permt}
     fits = []
     scores = []
@@ -91,8 +91,8 @@ def map_permut(args):
     i = args['i']  # index of each target
     data = args['data']
     X_train, _, y_train, _ = data[i]
-    args['X'] = X_train
-    args['y'] = y_train
+    args['Xs'] = X_train
+    args['ys'] = y_train
     args_rest = {key: value for key, value in args.items() if key != 'i'}
     return i, grid_search_single_permut(**args_rest)
 
