@@ -45,8 +45,7 @@ def evaluate_single(X: np.ndarray, y: np.ndarray, param: dict, cv: int = 4, trai
 
 
 def grid_search_single_gene(X: np.ndarray, y: np.ndarray, param: dict, permts: dict, cv: int = 4, **specs):
-    """ evaluate all the permutations for a gene, and returns the best fit """
-    # evaluate each permutation
+    """ evaluate all the permutations for one gene,  """
     fits = []
     scores = []
     for permt in permts:  
@@ -64,7 +63,7 @@ def grid_search_single_gene(X: np.ndarray, y: np.ndarray, param: dict, permts: d
 
 
 def grid_search_single_permut(Xs, ys, param: dict, permt: dict, cv: int = 4, **specs):
-    """ evalute all genes for the one permutation of param """
+    """ evalute all genes for one permutation of param """
     param_a = {**param, **permt}
     fits = []
     scores = []
@@ -88,11 +87,8 @@ def map_gene(args):
 
 def map_permut(args):
     """ maps the args to the grid search function for single permutation of param, used for multi threating """
-    i = args['i']  # index of each target
-    data = args['data']
-    X_train, _, y_train, _ = data[i]
-    args['Xs'] = X_train
-    args['ys'] = y_train
+    i = args['i']  # index of each permutation
+
     args_rest = {key: value for key, value in args.items() if key != 'i'}
     return i, grid_search_single_permut(**args_rest)
 
@@ -129,8 +125,15 @@ def search(data: Data, param, param_grid, permts, n_jobs, output_dir=None, **spe
                 best_params[i_gene] = best_param
                 best_ests[i_gene] = best_est
         else:  # when there is more permuts
-            print('Permutation-based multi threading')
-            input_data = [{'i': i, 'data': data, 'param': param, 'permt': permts[i], **specs} for i in range(len(permts))]
+            print('Permutation-based multi threading')            
+            Xs = []
+            ys = []
+            for i in range(n_genes):
+                X_train, _, y_train, _ = data[i]
+                Xs.append(X_train)
+                ys.append(y_train)
+
+            input_data = [{'i': i, 'Xs': Xs, 'ys':ys, 'param': param, 'permt': permts[i], **specs} for i in range(len(permts))]
             all_output = pool.map(map_permut, input_data)
             try:
                 all_output.sort(key=lambda x: x[0])
