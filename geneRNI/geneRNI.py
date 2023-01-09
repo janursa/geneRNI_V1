@@ -37,7 +37,7 @@ sys.path.insert(0, dir_main)  # TODO: not recommended (let's make a setup.py fil
 #        This is because multiprocessing uses pickle that has problem with lambda function.
 
 
-def network_inference(data: Data, gene_names, param, param_unique=None, verbose=True, output_dir=None):
+def network_inference(data: Data, gene_names, param, param_unique=None, verbose=True, test_score=False, output_dir=None):
     """ Determines links of network inference
     If the ests are given, use them instead of creating new ones.
     """
@@ -52,25 +52,35 @@ def network_inference(data: Data, gene_names, param, param_unique=None, verbose=
 
     links = []
     train_scores, test_scores, oob_scores = [], [], []
+    # for i in range(n_genes):
     for i in range(n_genes):
+        # print('----------------- ',i)
         X_train, X_test, y_train, y_test = data[i]
 
-        # Estimate train and test scores to assess generalization abilities
+        #-Estimate train and test scores to assess generalization abilities
         ests[i].fit(X_train, y_train)
         train_scores.append(ests[i].score(X_train, y_train))
-        test_scores.append(ests[i].score(X_test, y_test))
+        if test_score:
+            test_scores.append(ests[i].score(X_test, y_test))
         if param['estimator_t'] == 'RF':
             oob_scores.append(ests[i].est.oob_score_)
 
         # Actual network inference, using all the available data
-        ests[i].fit(np.concatenate((X_train, X_test), axis=0), np.concatenate((y_train, y_test), axis=0))
+        if X_test is None:
+            X, y = X_train, y_train
+        else:
+            X, y = np.concatenate((X_train, X_test), axis=0), np.concatenate((y_train, y_test), axis=0)
+        ests[i].fit(X, y)
+        
         links.append(ests[i].compute_feature_importances())
+
 
     # Show scores
     tools.verboseprint(verbose, f'\nnetwork inference: train score, mean: {np.mean(train_scores)} std: {np.std(train_scores)}')
-    tools.verboseprint(
-        verbose,
-        f'network inference: test score, mean: {np.mean(test_scores)} std: {np.std(test_scores)}')
+    if test_score:
+        tools.verboseprint(
+            verbose,
+            f'network inference: test score, mean: {np.mean(test_scores)} std: {np.std(test_scores)}')
     if len(oob_scores) > 0:
         tools.verboseprint(
             verbose,

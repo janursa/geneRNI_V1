@@ -175,17 +175,20 @@ class Data:
         y = np.concatenate(y, axis=0)
 
         # Split data in train/validation sets
-        X_train, X_test, y_train, y_test = model_selection.train_test_split(
-            X, y, test_size=self.test_size, shuffle=True, random_state=self.random_state)
+        if self.test_size==0 or self.test_size is None:
+            X_train, X_test, y_train, y_test = X, None, y, None
+        else:
+            X_train, X_test, y_train, y_test = model_selection.train_test_split(
+                X, y, test_size=self.test_size, shuffle=True, random_state=self.random_state)
 
         # TODO: Resample?
         # X_train, y_train = Data.resample(X_train, y_train, n_samples = bootstrap_fold*len(y), random_state=self.random_state)
         # X_test, y_test = Data.resample(X_test, y_test, n_samples = bootstrap_fold*len(y), random_state=self.random_state)
 
         # Pre-processing (mostly for non-tree-based models)
-        transformer = PowerTransformer(method='box-cox', standardize=True, copy=False)
-        transformer.fit_transform(X_train + 1e-15)
-        transformer.transform(X_test + 1e-15)
+        # transformer = PowerTransformer(method='box-cox', standardize=True, copy=False)
+        # transformer.fit_transform(X_train + 1e-15)
+        # transformer.transform(X_test + 1e-15)
 
         return X_train, X_test, y_train, y_test
 
