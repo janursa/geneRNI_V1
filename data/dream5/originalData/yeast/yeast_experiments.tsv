@@ -233,8 +233,8 @@ M. Smerdon	WY121	Wild type cells, replicate 3
 M. Smerdon	WY121	H4 (R45H) mutant, replicate 1
 M. Smerdon	WY121	H4 (R45H) mutant, replicate 2
 M. Smerdon	WY121	H4 (R45H) mutant, replicate 3
-J. Hesselberth	R276	Wild type cells, no alpha factor control
-J. Hesselberth	R276	Wild type cells, alpha factor arrested
+J. Hesselberth	R276	Wild type cells, no decay_coeff factor control
+J. Hesselberth	R276	Wild type cells, decay_coeff factor arrested
 D. Rossouw	285	Wild type cells, fermentation, exponential phase (day 2), replicate 1
 D. Rossouw	285	Wild type cells, fermentation, exponential phase (day 2), replicate 2
 D. Rossouw	285	Wild type cells, fermentation, exponential phase (day 2), replicate 3

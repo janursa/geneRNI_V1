@@ -29,7 +29,7 @@ sys.path.insert(0, dir_main)  # TODO: not recommended (let's make a setup.py fil
 
 #TODO: lag h: can be more than 1. can be in the format of hour/day 
 #TODO: how to make the static data comparable to dynamic data
-#TODO: add alpha to data processing and fit and score
+#TODO: add decay_coeff to data processing and fit and score
 #TODO: scripts to manage continuous integration (testing on Linux and Windows)
 
 
@@ -97,18 +97,18 @@ def network_inference(data: Data, gene_names, param, param_unique=None, verbose=
 class GeneEstimator(base.RegressorMixin):
     """The docstring for a class should summarize its behavior and list the public methods and instance variables """
 
-    def __init__(self, estimator_t: str, alpha: float = 0., **params):
+    def __init__(self, estimator_t: str, decay_coeff: float = 0., **params):
         '''args should all be keyword arguments with a default value -> kwargs should be all the keyword params of all regressors with values'''
         '''they should not be documented under the “Attributes” section, but rather under the “Parameters” section for that estimator.'''
         '''every keyword argument accepted by __init__ should correspond to an attribute on the instance'''
         '''There should be no logic, not even input validation, and the parameters should not be changed. The corresponding logic should be put where the parameters are used, typically in fit'''
         '''algorithm-specific unit tests,'''
-        # self.alpha = alpha
+        # self.decay_coeff = decay_coeff
         self.X_: Optional[np.ndarray] = None
         self.y_: Optional[np.ndarray] = None
         self.params: dict = params
         self.estimator_t: str = estimator_t
-        self.alpha: float = alpha
+        self.decay_coeff: float = decay_coeff
         self.est = None
 
         # estimators also need to declare any non-optional parameters to __init__ in the
@@ -123,9 +123,9 @@ class GeneEstimator(base.RegressorMixin):
         '''Attributes that have been estimated from the data must always have a name ending with trailing underscore'''
         '''The estimated attributes are expected to be overridden when you call fit a second time.'''
         
-        # apply alpha to y
+        # apply decay_coeff to y
         try:  # TODO: bad design
-            y = [y_i(self.alpha) for y_i in y]
+            y = [y_i(self.decay_coeff) for y_i in y]
         except:
             pass
 
@@ -152,9 +152,9 @@ class GeneEstimator(base.RegressorMixin):
 
     def score(self, X: np.ndarray, y: np.ndarray, **kwargs) -> np.ndarray:
         """ """
-        # apply alpha to y
+        # apply decay_coeff to y
         try:
-            y = [y_i(self.alpha) for y_i in y]
+            y = [y_i(self.decay_coeff) for y_i in y]
         except:
             pass
         utils.validation.check_is_fitted(self.est)
@@ -188,7 +188,7 @@ class GeneEstimator(base.RegressorMixin):
             r = inspection.permutation_importance(self.est, self.X_, self.y_, n_repeats=n_repeats)
         else:
             print("Permutation importance on the test samples")
-            y_test = [y_i(self.alpha) for y_i in y_test]
+            y_test = [y_i(self.decay_coeff) for y_i in y_test]
             r = inspection.permutation_importance(self.est, X_test, y_test, n_repeats=n_repeats)
         return r['importances_mean'], r['importances_std']
 
@@ -207,7 +207,7 @@ class GeneEstimator(base.RegressorMixin):
         new_y = np.empty(len(y), dtype=float)
         for i in range(len(y)):
             if is_lambda_function(y[i]):
-                new_y[i] = y[i](self.alpha)  # TODO: is this correct?
+                new_y[i] = y[i](self.decay_coeff)  # TODO: is this correct?
             else:
                 new_y[i] = y[i]
         return new_y
@@ -217,7 +217,7 @@ class GeneEstimator(base.RegressorMixin):
         the __init__ parameters of the estimator, together with their values. 
 
         """
-        return {'estimator_t': self.estimator_t, 'alpha': self.alpha, **self.params}
+        return {'estimator_t': self.estimator_t, 'decay_coeff': self.decay_coeff, **self.params}
 
     def set_params(self, **parameters) -> 'GeneEstimator':
         """ """

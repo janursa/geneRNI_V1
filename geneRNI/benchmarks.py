@@ -57,23 +57,23 @@ class Benchmark:
     @staticmethod
     def f_data_melanogaster():
         """ retrieves train data for melanogaster"""
-        (TS_data, time_points, genes, TFs, alphas) = pd.read_pickle(
+        (TS_data, time_points, genes, TFs, decay_coeffs) = pd.read_pickle(
             os.path.join(dir_main, f'data/real_networks/data/drosophila_data.pkl'))
-        return TS_data, time_points, genes, TFs, alphas
+        return TS_data, time_points, genes, TFs, decay_coeffs
 
     @staticmethod
     def f_data_ecoli():
         """ retrieves train data for ecoli"""
-        (TS_data, time_points, genes, TFs, alphas) = pd.read_pickle(
+        (TS_data, time_points, genes, TFs, decay_coeffs) = pd.read_pickle(
             os.path.join(dir_main, f'data/real_networks/data/ecoli_data.pkl'))
-        return TS_data, time_points, genes, TFs, alphas
+        return TS_data, time_points, genes, TFs, decay_coeffs
 
     @staticmethod
     def f_data_cerevisiae():
         """ retrieves train data for yeast"""
-        (TS_data, time_points, genes, TFs, alphas) = pd.read_pickle(
+        (TS_data, time_points, genes, TFs, decay_coeffs) = pd.read_pickle(
             os.path.join(dir_main, f'data/real_networks/data/cerevisiae_data.pkl'))
-        return TS_data, time_points, genes, TFs, alphas
+        return TS_data, time_points, genes, TFs, decay_coeffs
 
     @staticmethod
     def f_data_GRN(method, noise_level, network):

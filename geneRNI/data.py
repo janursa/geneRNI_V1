@@ -18,7 +18,7 @@ class Data:
             regulators='all',
             perturbations=None,
             KO=None,
-            test_size: float = 0.25,
+            test_size: float = 0.0,
             h: int = 1,
             random_state=None,
             verbose: bool = True,
@@ -84,11 +84,11 @@ class Data:
             n_time = exp_timeseries.shape[0]
             exp_time_diff = exp_time_points[h:] - exp_time_points[:n_time - h]
             exp_timeseries_x = exp_timeseries[:n_time - h, input_idx]
-            # current_timeseries_output = (exp_timeseries[h:,i_gene] - exp_timeseries[:n_time-h,i_gene]) / exp_time_diff + alphas[i_gene]*exp_timeseries[:n_time-h,i_gene]
+            # current_timeseries_output = (exp_timeseries[h:,i_gene] - exp_timeseries[:n_time-h,i_gene]) / exp_time_diff + decay_coeffs[i_gene]*exp_timeseries[:n_time-h,i_gene]
             for ii in range(len(exp_time_diff)):
-                f_dy_dt = lambda alpha_i, i=i, ii=ii, i_gene=i_gene: float(
+                f_dy_dt = lambda decay_coeff_i, i=i, ii=ii, i_gene=i_gene: float(
                     (self.ts_data[i][ii + 1:ii + 2, i_gene] - self.ts_data[i][ii:ii + 1, i_gene]) / exp_time_diff[
-                        ii] + alpha_i * self.ts_data[i][ii:ii + 1, i_gene])
+                        ii] + decay_coeff_i * self.ts_data[i][ii:ii + 1, i_gene])
                 y.append(f_dy_dt)
 
             exp_n_samples = exp_timeseries_x.shape[0]

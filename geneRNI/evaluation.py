@@ -156,7 +156,7 @@ class GOF:
         for f_score in f_scores:
             x = np.linspace(0.01, 1)
             y = f_score * x / (2 * x - f_score)
-            (l,) = plt.plot(x[y >= 0], y[y >= 0], color="gray", alpha=0.2)
+            (l,) = plt.plot(x[y >= 0], y[y >= 0], color="gray", decay_coeff=0.2)
             plt.annotate("f1={0:0.1f}".format(f_score), xy=(0.9, y[45] + 0.02))
 
         display = metrics.PrecisionRecallDisplay(
