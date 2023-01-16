@@ -1,8 +1,8 @@
-"""This is the example module.
+"""This is the main geneRNI module.
 
-This module does stuff.
+
 """
-__all__ = ['a', 'b', 'c']
+__all__ = []
 __version__ = '0.1'
 __author__ = 'Jalil Nourisa'
 
@@ -187,16 +187,18 @@ def grid_search(Xs, ys, param, param_grid, n_jobs=1, **specs):
 
 
 
-def rand_search(data: Data, param, param_grid, n_jobs=1, n_sample=60, output_dir=None, **specs):
+def rand_search(data: Data, param, param_grid, n_jobs=1, n_sample=60, output_dir=None, random_state=None, **specs):
     # print('Grid params:', param_grid)
     permts = permutation(param_grid, output_dir)
     print('stats: %d genes %d permts %d threads' % (len(data), len(permts), n_jobs))
     if len(permts) < n_sample:
         sampled_permts = permts
     else:
+        random.seed(random_state)
         sampled_permts = random.sample(permts, n_sample)
 
     sampled_permts_sorted = {key: [item[key] for item in sampled_permts] for key in param_grid.keys()}
+
     if output_dir is not None:
         with open(os.path.join(output_dir, 'sampled_permts.txt'), 'w') as f:
             print({'permts': sampled_permts}, file=f)
