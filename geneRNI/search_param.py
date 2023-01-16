@@ -33,45 +33,51 @@ def evaluate_single(X: np.ndarray, y: np.ndarray, param: dict, cv: int = 4, trai
     est = GeneEstimator(**param)
     if use_oob_flag:
         est.fit(X, y)
-        if train_flag:
-            score = est.score(X,y)
-        else:
-            score = est.est.oob_score_
+        train_score = est.score(X,y)
+        test_score = est.est.oob_score_
     else:
         cv_a = model_selection.ShuffleSplit(n_splits=cv, test_size=(1/cv)) 
-        scores = model_selection.cross_val_score(est, X, y, cv=cv_a)
-        score = np.mean(scores)
-    return est, float(score)
+        test_scores = model_selection.cross_val_score(est, X, y, cv=cv_a)
+        oo = model_selection.cross_validate(est, X, y, cv=cv_a, return_train_score=True)
+        
+        test_score = np.mean(oo['test_score'])
+        train_score = np.mean(oo['train_score'])
+    return est, train_score, test_score
 
 
 def grid_search_single_gene(X: np.ndarray, y: np.ndarray, param: dict, permts: dict, cv: int = 4, **specs):
     """ evaluate all the permutations for one gene,  """
     fits = []
-    scores = []
+    trainscores = []
+    testscores = []
     for permt in permts:  
         param_a = {**param, **permt}
-        fit, score = evaluate_single(X, y, param_a, cv,**specs)
+        fit, trainscore, testscore = evaluate_single(X, y, param_a, cv,**specs)
         fits.append(fit)
-        scores.append(score)
+        trainscores.append(trainscore)
+        testscores.append(testscore)
     # find the best candidate. Max score is considered best score. 
-    best_score = max(scores)
-    index = scores.index(best_score)
+    best_testscore = max(testscores)
+    index = testscores.index(best_testscore)
     best_param = permts[index]
     best_est = fits[index]
+    best_trainscore = trainscores[index]
 
-    return best_score, best_param, best_est
+    return best_trainscore, best_testscore, best_param, best_est
 
 
 def grid_search_single_permut(Xs, ys, param: dict, permt: dict, cv: int = 4, **specs):
     """ evalute all genes for one permutation of param """
     param_a = {**param, **permt}
     fits = []
-    scores = []
+    trainscores = []
+    testscores = []
     for X, y in zip(Xs, ys):
-        fit, score = evaluate_single(X, y, param_a, cv,**specs)
+        fit, trainscore, testscore = evaluate_single(X, y, param_a, cv,**specs)
         fits.append(fit)
-        scores.append(score)
-    return scores, fits
+        trainscores.append(trainscore)
+        testscores.append(testscore)
+    return trainscores, testscores, fits
 
 
 def map_gene(args):
@@ -93,7 +99,7 @@ def map_permut(args):
     return i, grid_search_single_permut(**args_rest)
 
 
-def search(data: Data, param, param_grid, permts, n_jobs, output_dir=None, **specs):
+def search(data: Data, param, permts, n_jobs, output_dir=None, **specs):
     """Evaluates the permts and returns the best results for each gene """
     time_start = time.time()
     if 'n_jobs' in param: 
@@ -101,14 +107,16 @@ def search(data: Data, param, param_grid, permts, n_jobs, output_dir=None, **spe
     n_genes = len(data)
 
     # Run the search
-    best_scores = [None for _ in range(n_genes)]
+    best_testscores = [None for _ in range(n_genes)]
+    best_trainscores = [None for _ in range(n_genes)]
     best_params = [None for _ in range(n_genes)]
     best_ests = [None for _ in range(n_genes)]
     if n_jobs == 1:  # serial
         for i in range(n_genes):
             output = map_gene({'i': i, 'data': data, 'param': param, 'permts': permts, **specs})
-            best_score, best_param, best_est = output[1]
-            best_scores[i] = best_score
+            best_trainscore, best_testscore, best_param, best_est = output[1]
+            best_testscores[i] = best_testscore
+            best_trainscores[i] = best_trainscore
             best_params[i] = best_param
             best_ests[i] = best_est
     else:  # parallel
@@ -120,8 +128,9 @@ def search(data: Data, param, param_grid, permts, n_jobs, output_dir=None, **spe
             all_output = pool.map(map_gene, map_input)
             all_output.sort(key=lambda x: x[0])
             for i_gene, output in enumerate(all_output):  # an output for a gene
-                best_score, best_param, best_est = output[1]
-                best_scores[i_gene] = best_score
+                best_trainscore, best_testscore, best_param, best_est = output[1]
+                best_testscores[i_gene] = best_testscore
+                best_trainscores[i_gene] = best_trainscore
                 best_params[i_gene] = best_param
                 best_ests[i_gene] = best_est
         else:  # when there is more permuts
@@ -135,6 +144,7 @@ def search(data: Data, param, param_grid, permts, n_jobs, output_dir=None, **spe
 
             input_data = [{'i': i, 'Xs': Xs, 'ys':ys, 'param': param, 'permt': permts[i], **specs} for i in range(len(permts))]
             all_output = pool.map(map_permut, input_data)
+            # print(all_output)
             try:
                 all_output.sort(key=lambda x: x[0])
             except TypeError:
@@ -142,19 +152,22 @@ def search(data: Data, param, param_grid, permts, n_jobs, output_dir=None, **spe
                 print(all_output)
                 raise TypeError()
 
-            scores = np.empty([n_genes, 0])
+            testscores = np.empty([n_genes, 0])
+            trainscores = np.empty([n_genes, 0])
             ests = np.empty([n_genes, 0])
             for output in all_output:  # each output is for a permut
-                scores_all_genes, ests_all_genes = output[1]  # for all genes
-                scores = np.c_[scores, scores_all_genes]
+                trainscores_all_genes, testscores_all_genes, ests_all_genes = output[1]  # for all genes
+                testscores = np.c_[testscores, testscores_all_genes]
+                trainscores = np.c_[trainscores, trainscores_all_genes]
                 ests = np.c_[ests, ests_all_genes]
-            best_scores = list(np.max(scores, axis=1))
-            best_indices = np.array(scores.argmax(1))
+            best_trainscores = list(np.max(trainscores, axis=1))
+            best_testscores = list(np.max(testscores, axis=1))
+            best_indices = np.array(testscores.argmax(1))
             best_ests = ests[range(n_genes), best_indices]
             best_params = [permts[i] for i in best_indices]
     time_end = time.time()
     print('Param search is completed in %.3f seconds' % (time_end-time_start))
-    return best_scores, best_params, best_ests
+    return best_trainscores, best_testscores, best_params, best_ests
 
 
 def permutation(param_grid, output_dir=None):
@@ -183,7 +196,7 @@ def grid_search(Xs, ys, param, param_grid, n_jobs=1, **specs):
     permts = permutation(param_grid)
     print('stats: %d genes %d permts %d threads' % (Xs[0].shape[1], len(permts), n_jobs))
     print(f'Running complete samples {len(permts)}')
-    return search(Xs, ys, param, param_grid, permts=permts, n_jobs=n_jobs, **specs)
+    return search(Xs, ys, param, permts=permts, n_jobs=n_jobs, **specs)
 
 
 
@@ -204,8 +217,8 @@ def rand_search(data: Data, param, param_grid, n_jobs=1, n_sample=60, output_dir
             print({'permts': sampled_permts}, file=f)
     print(f'Running {len(sampled_permts)} samples randomly')
 
-    best_scores, best_params, best_ests = search(data, param, param_grid, permts=sampled_permts, n_jobs=n_jobs, output_dir=output_dir, **specs)
-    return best_scores, best_params, best_ests, sampled_permts_sorted
+    best_trainscores, best_testscores, best_params, best_ests = search(data, param, permts=sampled_permts, n_jobs=n_jobs, output_dir=output_dir, **specs)
+    return best_trainscores, best_testscores, best_params, best_ests, sampled_permts_sorted
 
 
 def rand_search_partial(Xs, ys, param, param_grid, n_genes, n_jobs = 1, n_sample=60, **specs):
