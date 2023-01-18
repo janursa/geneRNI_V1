@@ -23,6 +23,8 @@ from typing import Dict, Any
 
 import numpy as np
 from sklearn.linear_model import Ridge
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import PowerTransformer
 
 from geneRNI.models import BaseWrapper
 
@@ -30,16 +32,19 @@ from geneRNI.models import BaseWrapper
 class RidgeWrapper(BaseWrapper):
 
     @staticmethod
-    def new_estimator(*args, **kwargs) -> Ridge:
+    def new_estimator(*args, **kwargs) -> Pipeline:
         # Pre-processing (mostly for non-tree-based models)
         # transformer = PowerTransformer(method='box-cox', standardize=True, copy=False)
         # transformer.fit_transform(X + 1e-15)
         # transformer.transform(X + 1e-15)
-        #TODO: return should be the pipeline
-        return Ridge(**kwargs)
+        return Pipeline(steps=[
+            ('pt', PowerTransformer(method='box-cox', standardize=True)),
+            ('ridge', Ridge(**kwargs))
+        ])
 
     @staticmethod
-    def compute_feature_importances(estimator: Ridge) -> np.array: #TODO: it also needs to be adjusted based on pipeline
+    def compute_feature_importances(pipeline: Pipeline) -> np.array:
+        estimator = pipeline.named_steps['ridge']
         coef = np.abs(estimator.coef_)
         assert len(coef.shape) == 1
         return coef
