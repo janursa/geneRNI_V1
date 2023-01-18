@@ -45,7 +45,7 @@ class SGDWrapper(BaseWrapper):
             estimator_t='sgd',
             loss='squared_error',
             penalty='l2',
-            alpha=0.0001
+            decay_coeff=0.0001
         )
 
     @staticmethod
@@ -53,5 +53,5 @@ class SGDWrapper(BaseWrapper):
         return dict(
             loss=['squared_error', 'huber', 'epsilon_insensitive', 'squared_epsilon_insensitive'],
             penalty=['l2', 'l1', 'elasticnet'],
-            alpha=10**np.arange(-6, 1),
+            decay_coeff=10**np.arange(-6, 1),
         )

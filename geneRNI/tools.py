@@ -133,3 +133,4 @@ class Settings:
         random_state = None
         bootstrap_fold = None
         return types_.DefaultParamType(param, param_grid, test_size, bootstrap_fold, random_state, random_state_data)
+

@@ -60,9 +60,9 @@ f = open('dynGENIE3/TS_data.pkl','rb')
             #decay_rates: 10
             #gene_names: 10
 f.close()
-# (VIM, alphas, prediction_score, stability_score, treeEstimators) = dynGENIE3.dynGENIE3(TS_data,time_points)
+# (VIM, decay_coeffs, prediction_score, stability_score, treeEstimators) = dynGENIE3.dynGENIE3(TS_data,time_points)
 # VIM: putative regulatory links -> from i th gene to j th gene
-# alphas: decay rates. 
+# decay_coeffs: decay rates. 
 
 def fill_single_missings(df): # fill single zeros by extrapolation from neighbors
     start_ii = 1
@@ -125,7 +125,7 @@ params = dict(
     tree_method = 'RF',
     regulators = 'all'
 )
-(VIM, alphas, oob_scores, stability_score, treeEstimators,scores_train) = dynGENIE3.dynGENIE3(TS_data,time_points,alpha='from_data',SS_data=None,gene_names=gene_names,**params)
+(VIM, decay_coeffs, oob_scores, stability_score, treeEstimators,scores_train) = dynGENIE3.dynGENIE3(TS_data,time_points,decay_coeff='from_data',SS_data=None,gene_names=gene_names,**params)
 links = dynGENIE3.get_link_list(VIM,gene_names=gene_names)
 
 #------ interpolation
@@ -156,14 +156,14 @@ n_jobs = None # number of jobs in parallel. fit, predict, decision_path, and app
 random_state=None # controls randomness in bootstrapping as well as drawing features
 verbose=0 
 warm_start=False # reuse the slution of the previous call to fit and add more ensembles to the estimator. look up on Glosery
-ccp_alpha=0 # complexity parameter used for minima cost-complexity pruning. by default, no prunning
+ccp_decay_coeff=0 # complexity parameter used for minima cost-complexity pruning. by default, no prunning
 max_samples = None # if bootstrap is True, the number of samples to draw from the samples. if none, draw X.shape[0]
 
 sk_rf_reg = RandomForestRegressor(n_estimators=n_estimators, criterion=criterion, max_depth=max_depth, min_samples_split=min_samples_split,
                                   min_samples_leaf=min_samples_leaf, min_weight_fraction_leaf=min_weight_fraction_leaf, 
                                   max_features=max_features, max_leaf_nodes=max_leaf_nodes, min_impurity_decrease=min_impurity_decrease,
                                   bootstrap=bootstrap, oob_score=oob_score, n_jobs=n_jobs, random_state=random_state, verbose=verbose,
-                                  warm_start=warm_start, ccp_alpha=ccp_alpha, max_samples=max_samples)
+                                  warm_start=warm_start, ccp_decay_coeff=ccp_decay_coeff, max_samples=max_samples)
 
 
 ## feature importance
@@ -200,10 +200,10 @@ import _pickle
 data_dir = 'C:/Users/nourisa/Downloads/testProjs/omics/dynGENIE3/dynGENIE3_data/real_networks/data/yeast_data.pkl'
 goldern_links_dir = ''
 with open(data_dir,'rb') as f:
-    (TS_data, time_points, genes, TFs, alphas) = _pickle.load(f)
+    (TS_data, time_points, genes, TFs, decay_coeffs) = _pickle.load(f)
 print('exp n:',len(TS_data))
 print('time*genes',TS_data[0].shape)
-print('len of alphas:',len(alphas))
+print('len of decay_coeffs:',len(decay_coeffs))
 print('len of genes:',len(genes))
 print('len of TFs:',len(TFs))
 # print(genes)

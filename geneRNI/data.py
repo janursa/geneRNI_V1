@@ -18,7 +18,7 @@ class Data:
             regulators='all',
             perturbations=None,
             KO=None,
-            test_size: float = 0.25,
+            test_size: float = 0.0,
             h: int = 1,
             random_state=None,
             verbose: bool = True,
@@ -84,11 +84,11 @@ class Data:
             n_time = exp_timeseries.shape[0]
             exp_time_diff = exp_time_points[h:] - exp_time_points[:n_time - h]
             exp_timeseries_x = exp_timeseries[:n_time - h, input_idx]
-            # current_timeseries_output = (exp_timeseries[h:,i_gene] - exp_timeseries[:n_time-h,i_gene]) / exp_time_diff + alphas[i_gene]*exp_timeseries[:n_time-h,i_gene]
+            # current_timeseries_output = (exp_timeseries[h:,i_gene] - exp_timeseries[:n_time-h,i_gene]) / exp_time_diff + decay_coeffs[i_gene]*exp_timeseries[:n_time-h,i_gene]
             for ii in range(len(exp_time_diff)):
-                f_dy_dt = lambda alpha_i, i=i, ii=ii, i_gene=i_gene: float(
+                f_dy_dt = lambda decay_coeff_i, i=i, ii=ii, i_gene=i_gene: float(
                     (self.ts_data[i][ii + 1:ii + 2, i_gene] - self.ts_data[i][ii:ii + 1, i_gene]) / exp_time_diff[
-                        ii] + alpha_i * self.ts_data[i][ii:ii + 1, i_gene])
+                        ii] + decay_coeff_i * self.ts_data[i][ii:ii + 1, i_gene])
                 y.append(f_dy_dt)
 
             exp_n_samples = exp_timeseries_x.shape[0]
@@ -107,7 +107,6 @@ class Data:
             input_idx = list(range(self.n_genes))
         else:
             input_idx = self.regulators[i_gene]
-        input_idx = np.asarray(input_idx, dtype=int)
 
         # TODO: Not sure I understand what was supposed to be done here
         # try:
@@ -176,17 +175,20 @@ class Data:
         y = np.concatenate(y, axis=0)
 
         # Split data in train/validation sets
-        X_train, X_test, y_train, y_test = model_selection.train_test_split(
-            X, y, test_size=self.test_size, shuffle=True, random_state=self.random_state)
+        if self.test_size==0 or self.test_size is None:
+            X_train, X_test, y_train, y_test = X, None, y, None
+        else:
+            X_train, X_test, y_train, y_test = model_selection.train_test_split(
+                X, y, test_size=self.test_size, shuffle=True, random_state=self.random_state)
 
         # TODO: Resample?
         # X_train, y_train = Data.resample(X_train, y_train, n_samples = bootstrap_fold*len(y), random_state=self.random_state)
         # X_test, y_test = Data.resample(X_test, y_test, n_samples = bootstrap_fold*len(y), random_state=self.random_state)
 
         # Pre-processing (mostly for non-tree-based models)
-        transformer = PowerTransformer(method='box-cox', standardize=True, copy=False)
-        transformer.fit_transform(X_train + 1e-15)
-        transformer.transform(X_test + 1e-15)
+        # transformer = PowerTransformer(method='box-cox', standardize=True, copy=False)
+        # transformer.fit_transform(X_train + 1e-15)
+        # transformer.transform(X_test + 1e-15)
 
         return X_train, X_test, y_train, y_test
 

@@ -29,7 +29,7 @@ from geneRNI import tools
 
 #TODO: lag h: can be more than 1. can be in the format of hour/day 
 #TODO: how to make the static data comparable to dynamic data
-#TODO: add alpha to data processing and fit and score
+#TODO: add decay_coeff to data processing and fit and score
 #TODO: scripts to manage continuous integration (testing on Linux and Windows)
 
 
@@ -82,24 +82,24 @@ def network_inference(Xs, ys, gene_names, param, param_unique = None, Xs_test=No
     return ests, train_scores, links_df, oob_scores, test_scores
 class GenesEstimator(base.BaseEstimator,base.RegressorMixin):
     """The docstring for a class should summarize its behavior and list the public methods and instance variables """
-    def __init__(self, estimator=None, alphas = 0, **params):
+    def __init__(self, estimator=None, decay_coeffs = 0, **params):
         '''args should all be keyword arguments with a default value -> kwargs should be all the keyword params of all regressors with values'''
         '''they should not be documented under the “Attributes” section, but rather under the “Parameters” section for that estimator.'''
         '''every keyword argument accepted by __init__ should correspond to an attribute on the instance'''
         '''There should be no logic, not even input validation, and the parameters should not be changed. The corresponding logic should be put where the parameters are used, typically in fit'''
         '''algorithm-specific unit tests,'''
-        # self.alpha = alpha
+        # self.decay_coeff = decay_coeff
         self.params = params
         self.estimator = estimator
-        self.alphas = alphas
+        self.decay_coeffs = decay_coeffs
         self.ests = []
         # self._required_parameters = () #estimators also need to declare any non-optional parameters to __init__ in the
-    def apply_alpha(self, ys):
+    def apply_decay_coeff(self, ys):
 
-        if self.alphas == 0:
+        if self.decay_coeffs == 0:
             ys = [[ys[i,j](0) for j in range(ys.shape[1])] for i in range(ys.shape[0])]
         else:
-            ys = [[ys[i,j](self.alphas[j]) for j in range(ys.shape[1])] for i in range(ys.shape[0])]
+            ys = [[ys[i,j](self.decay_coeffs[j]) for j in range(ys.shape[1])] for i in range(ys.shape[0])]
         
         return np.array(ys)
     def check_X_y(self, X, ys):
@@ -117,8 +117,8 @@ class GenesEstimator(base.BaseEstimator,base.RegressorMixin):
         '''Attributes that have been estimated from the data must always have a name ending with trailing underscore'''
         '''The estimated attributes are expected to be overridden when you call fit a second time.'''
         
-        # apply alpha to y
-        ys = self.apply_alpha(ys)
+        # apply decay_coeff to y
+        ys = self.apply_decay_coeff(ys)
         self.check_X_y(X,ys)
 
         for i in range(ys.shape[1]): #TODO: this might need to go to set_params
@@ -153,8 +153,8 @@ class GenesEstimator(base.BaseEstimator,base.RegressorMixin):
         return [est.predict(X) for est,X in zip(self.ests,Xs)]
     def score(self, X, ys): 
         """ """
-        # apply alpha to y
-        ys = self.apply_alpha(ys)
+        # apply decay_coeff to y
+        ys = self.apply_decay_coeff(ys)
         self.check_X_y(X,ys)
         self.check_is_fitted()
 
@@ -200,7 +200,7 @@ class GenesEstimator(base.BaseEstimator,base.RegressorMixin):
             r = inspection.permutation_importance(self.est, self.X_, self.y_, n_repeats=n_repeats)
         else:
             print("Permutation importance on the test samples")
-            y_test = [y_i(self.alpha) for y_i in y_test]
+            y_test = [y_i(self.decay_coeff) for y_i in y_test]
             r = inspection.permutation_importance(self.est, X_test, y_test, n_repeats=n_repeats)
         return r['importances_mean'], r['importances_std']
     def compute_feature_importance_permutation (self, X_test, y_test):
@@ -218,7 +218,7 @@ class GenesEstimator(base.BaseEstimator,base.RegressorMixin):
         the __init__ parameters of the estimator, together with their values. 
 
         """
-        return {'estimator': self.estimator, 'alphas': self.alphas, **self.params}
+        return {'estimator': self.estimator, 'decay_coeffs': self.decay_coeffs, **self.params}
     def set_params(self, **parameters):
         """ """
         for parameter, value in parameters.items():

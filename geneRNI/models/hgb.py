@@ -22,7 +22,6 @@
 from typing import Dict, Any
 
 import numpy as np
-from sklearn.experimental import enable_hist_gradient_boosting
 from sklearn.ensemble import HistGradientBoostingRegressor
 
 from geneRNI.models import BaseWrapper

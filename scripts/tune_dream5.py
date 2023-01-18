@@ -1,4 +1,3 @@
-# precision-accuracy
 import argparse
 import os
 import pathlib
@@ -12,7 +11,6 @@ dir_main = os.path.join(pathlib.Path(__file__).parent.resolve(), '..')
 sys.path.insert(0, dir_main)
 
 from geneRNI.models import get_estimator_names
-from geneRNI.benchmarks import Benchmark
 from geneRNI import tools
 from geneRNI import search_param
 
@@ -21,7 +19,7 @@ pd.options.mode.chained_assignment = None
 
 def dream5_single(specs, estimator_t, network):
     print(f'Running dream5, network {network}, and estimator {estimator_t}')
-    out_data = Benchmark.process_data_dream5(network=network, estimator_t=estimator_t)
+    out_data = tools.Benchmark.process_data_dream5(network=network, estimator_t=estimator_t)
     out_defaults = tools.Settings.default(estimator_t=estimator_t)
     best_scores, best_params, best_ests, sampled_permts = search_param.rand_search(
         out_data,

@@ -30,7 +30,7 @@ from geneRNI.models import BaseWrapper
 class RFWrapper(BaseWrapper):
 
     @staticmethod
-    def new_estimator(*args, **kwargs) -> RandomForestRegressor:
+    def new_estimator(**kwargs) -> RandomForestRegressor:
         return RandomForestRegressor(oob_score=True, **kwargs)
 
     @staticmethod
@@ -46,7 +46,7 @@ class RFWrapper(BaseWrapper):
             min_samples_leaf=1,
             # criterion = 'absolute_error',
             n_estimators=200,
-            alpha=.9,
+            decay_coeff=.9,
             n_jobs=10
         )
 
@@ -55,5 +55,5 @@ class RFWrapper(BaseWrapper):
         return dict(
             min_samples_leaf=np.arange(1, 10, 1),
             max_depth=np.arange(10, 50, 5),
-            alpha=np.arange(0, 1, .1),
+            decay_coeff=np.arange(0, 1, .1),
         )

@@ -58,23 +58,23 @@ class Benchmark:
     @staticmethod
     def f_data_melanogaster():
         """ retrieves train data for melanogaster"""
-        (TS_data, time_points, genes, TFs, alphas) = pd.read_pickle(
+        (TS_data, time_points, genes, TFs, decay_coeffs) = pd.read_pickle(
             os.path.join(dir_main, f'data/real_networks/data/drosophila_data.pkl'))
-        return TS_data, time_points, genes, TFs, alphas
+        return TS_data, time_points, genes, TFs, decay_coeffs
 
     @staticmethod
     def f_data_ecoli():
         """ retrieves train data for ecoli"""
-        (TS_data, time_points, genes, TFs, alphas) = pd.read_pickle(
+        (TS_data, time_points, genes, TFs, decay_coeffs) = pd.read_pickle(
             os.path.join(dir_main, f'data/real_networks/data/ecoli_data.pkl'))
-        return TS_data, time_points, genes, TFs, alphas
+        return TS_data, time_points, genes, TFs, decay_coeffs
 
     @staticmethod
     def f_data_cerevisiae():
         """ retrieves train data for yeast"""
-        (TS_data, time_points, genes, TFs, alphas) = pd.read_pickle(
+        (TS_data, time_points, genes, TFs, decay_coeffs) = pd.read_pickle(
             os.path.join(dir_main, f'data/real_networks/data/cerevisiae_data.pkl'))
-        return TS_data, time_points, genes, TFs, alphas
+        return TS_data, time_points, genes, TFs, decay_coeffs
 
     @staticmethod
     def f_data_GRN(method, noise_level, network):
@@ -115,12 +115,6 @@ class Benchmark:
     @staticmethod
     def process_data_dream5(network, estimator_t: str, **specs) -> Data:
         ss_data, gene_names, tf_names = Benchmark.f_data_dream5(network)
-
-        # Map TF names to indices
-        mapping = {gene_name: i for i, gene_name in enumerate(gene_names)}
-        tf_names = np.asarray([mapping[gene_name] for gene_name in tf_names], dtype=int)
-        tf_names = [tf_names for _ in range(len(gene_names))]
-
         return Benchmark.process_data(
             None, ss_data, None, gene_names, estimator_t, regulators=tf_names, **specs)
 
