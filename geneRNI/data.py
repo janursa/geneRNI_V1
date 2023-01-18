@@ -107,6 +107,7 @@ class Data:
             input_idx = list(range(self.n_genes))
         else:
             input_idx = self.regulators[i_gene]
+        input_idx = np.asarray(input_idx, dtype=int)
 
         # TODO: Not sure I understand what was supposed to be done here
         # try:

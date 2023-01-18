@@ -5,7 +5,8 @@ import sys
 import numpy as np
 import pandas as pd
 
-from geneRNI.tools import Data, Settings
+from geneRNI.data import Data
+from geneRNI.tools import Settings
 
 dir_main = os.path.join(pathlib.Path(__file__).parent.resolve(), '..')
 sys.path.insert(0, dir_main)
@@ -114,6 +115,12 @@ class Benchmark:
     @staticmethod
     def process_data_dream5(network, estimator_t: str, **specs) -> Data:
         ss_data, gene_names, tf_names = Benchmark.f_data_dream5(network)
+
+        # Map TF names to indices
+        mapping = {gene_name: i for i, gene_name in enumerate(gene_names)}
+        tf_names = np.asarray([mapping[gene_name] for gene_name in tf_names], dtype=int)
+        tf_names = [tf_names for _ in range(len(gene_names))]
+
         return Benchmark.process_data(
             None, ss_data, None, gene_names, estimator_t, regulators=tf_names, **specs)
 

@@ -11,7 +11,7 @@ __author__ = 'Jalil Nourisa'
 import os
 import pathlib
 import sys
-from typing import Optional, Iterable, Any, Sized
+from typing import Optional, Any
 
 import numpy as np
 from sklearn import base
@@ -19,8 +19,8 @@ from sklearn import inspection
 from sklearn import utils
 
 from geneRNI import tools
+from geneRNI.data import Data
 from geneRNI.models import get_estimator_wrapper
-from geneRNI.tools import Data
 from geneRNI.utils import is_lambda_function
 
 dir_main = os.path.join(pathlib.Path(__file__).parent.resolve(), '..')

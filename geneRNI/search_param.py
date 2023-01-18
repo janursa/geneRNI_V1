@@ -16,8 +16,8 @@ import numpy as np
 from pathos.pools import ParallelPool as Pool
 from sklearn import model_selection
 
+from .data import Data
 from .geneRNI import GeneEstimator
-from .tools import Data
 
 
 def evaluate_single(X: np.ndarray, y: np.ndarray, param: dict, cv: int = 4, train_flag=False, **specs) -> Tuple[GeneEstimator, float]:
@@ -83,7 +83,8 @@ def map_gene(args):
     args['X'] = X_train
     args['y'] = y_train
     args_rest = {key: value for key, value in args.items() if key != 'i'}
-    return i, grid_search_single_gene(**args_rest)
+    out = i, grid_search_single_gene(**args_rest)
+    return out
 
 
 def map_permut(args):
