@@ -5,7 +5,8 @@ import sys
 import numpy as np
 import pandas as pd
 
-from geneRNI.tools import Data, Settings
+from geneRNI.data import Data
+from geneRNI.tools import Settings
 
 dir_main = os.path.join(pathlib.Path(__file__).parent.resolve(), '..')
 sys.path.insert(0, dir_main)

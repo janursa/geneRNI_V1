@@ -92,12 +92,11 @@ class Links:
         df = Links.sort(df, gene_names)
         return df
 
-
     @staticmethod
-    def output(links_df, file_name):
+    def output(links: pd.DataFrame, file_name: str):
         if file_name is not None and not isinstance(file_name, str):
             raise ValueError('input argument file_name must be a string')
-        links_df.to_csv(file_name, index=False)
+        links.to_csv(file_name, index=False)
 
     @staticmethod
     def sort(links, sorted_gene_names, regulator_tag='Regulator', target_tag='Target', weight_tag='Weight'):

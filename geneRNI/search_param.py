@@ -77,7 +77,8 @@ def map_gene(args):
     args['X'], args['y'] = args['data'][i]
     del args['data']
     args_rest = {key: value for key, value in args.items() if key != 'i'}
-    return i, grid_search_single_gene(**args_rest)
+    out = i, grid_search_single_gene(**args_rest)
+    return out
 
 
 def map_permut(args):

@@ -1,4 +1,3 @@
-# precision-accuracy
 import argparse
 import os
 import pathlib
