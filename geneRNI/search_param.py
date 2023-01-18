@@ -74,10 +74,7 @@ def grid_search_single_permut(Xs, ys, param: dict, permt: dict, cv: int = 4, **s
 def map_gene(args):
     """ maps the args to the grid search function for single target, used for multi threating """
     i = args['i']  # index of each target
-    data = args['data']
-    X_train, _, y_train, _ = data[i]
-    args['X'] = X_train
-    args['y'] = y_train
+    args['X'], args['y'] = args['data'][i]
     del args['data']
     args_rest = {key: value for key, value in args.items() if key != 'i'}
     return i, grid_search_single_gene(**args_rest)
@@ -120,9 +117,9 @@ def run(data: Data, param: dict, permts:list, n_jobs:int, **specs):
             Xs = []
             ys = []
             for i in range(n_genes):
-                X_train, _, y_train, _ = data[i]
-                Xs.append(X_train)
-                ys.append(y_train)
+                X, y = data[i]
+                Xs.append(X)
+                ys.append(y)
 
             input_data = [{'i': i, 'Xs': Xs, 'ys':ys, 'param': param, 'permt': permts[i], **specs} for i in range(len(permts))]
             all_output = pool.map(map_permut, input_data)

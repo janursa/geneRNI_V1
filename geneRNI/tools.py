@@ -10,6 +10,7 @@ import operator
 
 import numpy as np
 import pandas as pd
+pd.options.mode.chained_assignment = None
 
 from geneRNI import types_
 from geneRNI.models import get_estimator_wrapper
