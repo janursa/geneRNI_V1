@@ -31,10 +31,15 @@ class RidgeWrapper(BaseWrapper):
 
     @staticmethod
     def new_estimator(*args, **kwargs) -> Ridge:
+        # Pre-processing (mostly for non-tree-based models)
+        # transformer = PowerTransformer(method='box-cox', standardize=True, copy=False)
+        # transformer.fit_transform(X + 1e-15)
+        # transformer.transform(X + 1e-15)
+        #TODO: return should be the pipeline
         return Ridge(**kwargs)
 
     @staticmethod
-    def compute_feature_importances(estimator: Ridge) -> np.array:
+    def compute_feature_importances(estimator: Ridge) -> np.array: #TODO: it also needs to be adjusted based on pipeline
         coef = np.abs(estimator.coef_)
         assert len(coef.shape) == 1
         return coef

@@ -18,7 +18,6 @@ from sklearn import base
 from sklearn import inspection
 from sklearn import utils
 
-from geneRNI import tools
 from geneRNI.models import get_estimator_wrapper
 from geneRNI.data import Data
 from geneRNI.utils import is_lambda_function
@@ -74,18 +73,18 @@ def network_inference(data: Data, gene_names, param, param_unique=None, verbose=
 
 
     # Show scores
-    tools.verboseprint(verbose, f'\nnetwork inference: train score, mean: {np.mean(train_scores)} std: {np.std(train_scores)}')
+    utils.verboseprint(verbose, f'\nnetwork inference: train score, mean: {np.mean(train_scores)} std: {np.std(train_scores)}')
     if test_size!=0:
-        tools.verboseprint(
+        utils.verboseprint(
             verbose,
             f'network inference: test score, mean: {np.mean(test_scores)} std: {np.std(test_scores)}')
     if len(oob_scores) > 0:
-        tools.verboseprint(
+        utils.verboseprint(
             verbose,
             f'network inference: oob score (only RF), mean: {np.mean(oob_scores)} std: {np.std(oob_scores)}')
 
     # Save predicted regulatory relations
-    links_df = tools.Links.format(links, gene_names)
+    links_df = links.format(links, gene_names)
     if output_dir is not None:
         links_df.to_csv(os.path.join(output_dir, 'links.txt'))
 
@@ -139,7 +138,7 @@ class GeneEstimator(base.RegressorMixin):
         self.X_ = X
         self.y_ = y
 
-        self.est = get_estimator_wrapper(self.estimator_t).new_estimator(**self.params) #TODO: how do you pass the params
+        self.est = get_estimator_wrapper(self.estimator_t).new_estimator(**self.params) #TODO: how do you pass the params        
         self.est.fit(X, self.check_target(y))
         return self
 

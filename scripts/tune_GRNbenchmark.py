@@ -7,16 +7,14 @@ import numpy as np
 
 dir_main = os.path.join(pathlib.Path(__file__).parent.resolve(),'..')
 sys.path.insert(0, dir_main)
-from geneRNI import geneRNI as ni
-from geneRNI import tools
-from geneRNI import search_param
+from geneRNI import search_param, benchmarks, utils
 pd.options.mode.chained_assignment = None
 
 
 def GRNbenchmark_single(specs, estimator_t, method, noise_level, network):
     print(f'Running single GRNbenchmark: {estimator_t} {method} {noise_level} {network}')
-    out_data = tools.Benchmark.process_data_grn_benchmark(method, noise_level, network, estimator_t=estimator_t)
-    out_defaults = tools.Settings.default(estimator_t=estimator_t)
+    out_data = benchmarks.process_data_grn_benchmark(method, noise_level, network, estimator_t=estimator_t)
+    out_defaults = utils.default_settings(estimator_t=estimator_t)
     best_scores, best_params, best_ests, sampled_permts = search_param.rand_search(
         out_data, param=out_defaults.param, param_grid=out_defaults.param_grid, **specs)
     results_dir = os.path.join(dir_main, f'results/{estimator_t}/GRNbenchmark_{method}_{noise_level}_{network}.txt')

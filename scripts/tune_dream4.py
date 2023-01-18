@@ -12,16 +12,15 @@ dir_main = os.path.join(pathlib.Path(__file__).parent.resolve(), '..')
 sys.path.insert(0, dir_main)
 
 from geneRNI.models import get_estimator_names
-from geneRNI import tools
-from geneRNI import search_param
+from geneRNI import search_param, benchmarks, utils
 
 pd.options.mode.chained_assignment = None
 
 
 def dream4_single(specs, estimator_t, size, network):
     print(f'Running dream4 for network size {size}. network {network}, and estimator {estimator_t}')
-    out_data = tools.Benchmark.process_data_dream4(size=size, network=network, estimator_t=estimator_t)
-    out_defaults = tools.Settings.default(estimator_t=estimator_t)
+    out_data = benchmarks.process_data_dream4(size=size, network=network, estimator_t=estimator_t)
+    out_defaults = utils.default_settings(estimator_t=estimator_t)
     best_scores, best_params, best_ests, sampled_permts = search_param.rand_search(
         out_data,
         param=out_defaults.param,

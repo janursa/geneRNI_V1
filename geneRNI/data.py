@@ -170,11 +170,6 @@ class Data:
         X = np.concatenate(X, axis=0)
         y = np.concatenate(y, axis=0)
 
-        # Pre-processing (mostly for non-tree-based models)
-        # transformer = PowerTransformer(method='box-cox', standardize=True, copy=False)
-        # transformer.fit_transform(X_train + 1e-15)
-        # transformer.transform(X_test + 1e-15)
-
         return X, y
 
     @staticmethod

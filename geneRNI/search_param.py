@@ -19,25 +19,48 @@ from sklearn import model_selection
 from .geneRNI import GeneEstimator
 from .data import Data
 
+def shuffle_cross_validate(est, X, y, cv:int):
+    # rs = model_selection.ShuffleSplit(n_splits=cv)
+
+    # cv = model_selection.KFold(n_splits=cv, shuffle=True)
+    oo = model_selection.cross_validate(est, X, y, cv=cv)
+    test_score = np.mean(oo['test_score'])
+    return test_score
+def loo_cross_validate(est, X, y):
+    """Leave one out cross validation
+    """
+    test_scores = []
+    loo = model_selection.LeaveOneOut()
+    for i, (train_index, test_index) in enumerate(loo.split(X)):
+        X_train, y_train = X[train_index], y[train_index]
+        X_test, y_test = X[test_index], y[test_index]
+        est.fit(X_train, y_train)
+        test_scores.append(est.score(X_test, y_test)) 
+    print(test_scores)
+    return np.mean(test_scores)
 
 def evaluate_single(X: np.ndarray, y: np.ndarray, param: dict, cv: int = 5, train_flag=False, **specs) -> Tuple[GeneEstimator, float]:
     """ evalutes the gene estimator for a given param and returns a test score 
     for RF, the test score is oob_score. For the rest, cv is applied.
     train_flag -- to use training score 
     """
+    use_oob_flag = False
+    # leave_one_out = False
     if param['estimator_t'] == 'RF':
         use_oob_flag = True
-    else:
-        use_oob_flag = False
+    # elif param['estimator_t'] == 'ridge':
+    #     leave_one_out = True
+    # else:
+    #     #TODO: define this
+    #     raise ValueError('Define evaluation strategy')
     
     est = GeneEstimator(**param)
     if use_oob_flag:
         est.fit(X, y)
         test_score = est.est.oob_score_
     else:
-        rs = model_selection.ShuffleSplit(n_splits=cv, test_size=0.2)
-        oo = model_selection.cross_validate(est, X, y, cv=rs, return_train_score=None)
-        test_score = np.mean(oo['test_score'])
+        # test_score = loo_cross_validate(est, X, y)  
+        test_score = shuffle_cross_validate(est, X, y, cv)      
 
     return test_score
 

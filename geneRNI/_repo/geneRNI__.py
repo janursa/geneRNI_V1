@@ -24,8 +24,6 @@ from sklearn import metrics
 dir_main = os.path.join(pathlib.Path(__file__).parent.resolve(),'..')
 sys.path.insert(0, dir_main)
 
-from geneRNI import tools
-
 
 #TODO: lag h: can be more than 1. can be in the format of hour/day 
 #TODO: how to make the static data comparable to dynamic data
@@ -54,18 +52,18 @@ def network_inference(Xs, ys, gene_names, param, param_unique = None, Xs_test=No
     
     # train score
     train_scores = [ests[i].score(X,y) for i, (X, y) in enumerate(zip(Xs,ys))]
-    tools.verboseprint(verbose, f'\nnetwork inference: train score, mean: {np.mean(train_scores)} std: {np.std(train_scores)}')
+    utils.verboseprint(verbose, f'\nnetwork inference: train score, mean: {np.mean(train_scores)} std: {np.std(train_scores)}')
     # print(f'\nnetwork inference: train score, mean: {np.mean(train_scores)} std: {np.std(train_scores)}')
     # oob score
     if param['estimator_t'] == 'RF':
         oob_scores = [est.est.oob_score_ for est in ests]  
-        tools.verboseprint(verbose,f'network inference: oob score (only RF), mean: {np.mean(oob_scores)} std: {np.std(oob_scores)}')      
+        utils.verboseprint(verbose,f'network inference: oob score (only RF), mean: {np.mean(oob_scores)} std: {np.std(oob_scores)}')      
     else:
         oob_scores = None
     # test score
     if Xs_test is not None or ys_test is not None:
         test_scores = [ests[i].score(X,y) for i, (X, y) in enumerate(zip(Xs_test,ys_test))]
-        tools.verboseprint(verbose,f'network inference: test score, mean: {np.mean(test_scores)} std: {np.std(test_scores)}')
+        utils.verboseprint(verbose,f'network inference: test score, mean: {np.mean(test_scores)} std: {np.std(test_scores)}')
     else:
         test_scores = None
     # feature importance
@@ -77,7 +75,7 @@ def network_inference(Xs, ys, gene_names, param, param_unique = None, Xs_test=No
     #     links_v = [ests[i].compute_feature_importances_tree() for i,_ in enumerate(ys)]
     # links = links_p
     links = [ests[i].compute_feature_importances_tree() for i,_ in enumerate(ys)]
-    links_df = tools.Links.format(links, gene_names)
+    links_df = links.format(links, gene_names)
     # links = None
     return ests, train_scores, links_df, oob_scores, test_scores
 class GenesEstimator(base.BaseEstimator,base.RegressorMixin):

@@ -6,8 +6,7 @@ import numpy as np
 import pandas as pd
 
 from geneRNI.data import Data
-from geneRNI.tools import Settings
-
+from geneRNI import utils
 dir_main = os.path.join(pathlib.Path(__file__).parent.resolve(), '..')
 sys.path.insert(0, dir_main)
 
@@ -96,7 +95,7 @@ class Benchmark:
 
     @staticmethod
     def process_data(ts_data, ss_data, time_points, gene_names, estimator_t, **specs) -> Data:
-        pp = Settings.default(estimator_t)
+        pp = utils.default_settings(estimator_t)
         return Data(
             gene_names,
             ss_data,
