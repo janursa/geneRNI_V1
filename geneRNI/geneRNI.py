@@ -4,9 +4,9 @@
 This module does stuff.
 """
 
-__all__ = ['a', 'b', 'c']
+__all__ = ['']
 __version__ = '0.1'
-__author__ = 'Jalil Nourisa'
+__author__ = 'Jalil Nourisa \n Antoine Passemiers'
 
 import os
 import pathlib
@@ -14,13 +14,15 @@ import sys
 from typing import Optional, Iterable, Any, Sized
 
 import numpy as np
+import sklearn
 from sklearn import base
 from sklearn import inspection
-from sklearn import utils
 
+from geneRNI import utils
 from geneRNI.models import get_estimator_wrapper
 from geneRNI.data import Data
-from geneRNI.utils import is_lambda_function
+from geneRNI.utils import is_lambda_function, verboseprint
+from geneRNI.links import format_links
 
 dir_main = os.path.join(pathlib.Path(__file__).parent.resolve(), '..')
 sys.path.insert(0, dir_main)  # TODO: not recommended (let's make a setup.py file instead)
@@ -73,18 +75,18 @@ def network_inference(data: Data, gene_names, param, param_unique=None, verbose=
 
 
     # Show scores
-    utils.verboseprint(verbose, f'\nnetwork inference: train score, mean: {np.mean(train_scores)} std: {np.std(train_scores)}')
+    verboseprint(verbose, f'\nnetwork inference: train score, mean: {np.mean(train_scores)} std: {np.std(train_scores)}')
     if test_size!=0:
-        utils.verboseprint(
+        verboseprint(
             verbose,
             f'network inference: test score, mean: {np.mean(test_scores)} std: {np.std(test_scores)}')
     if len(oob_scores) > 0:
-        utils.verboseprint(
+        verboseprint(
             verbose,
             f'network inference: oob score (only RF), mean: {np.mean(oob_scores)} std: {np.std(oob_scores)}')
 
     # Save predicted regulatory relations
-    links_df = links.format(links, gene_names)
+    links_df = format_links(links, gene_names)
     if output_dir is not None:
         links_df.to_csv(os.path.join(output_dir, 'links.txt'))
 
@@ -126,14 +128,14 @@ class GeneEstimator(base.RegressorMixin):
         except:
             pass
 
-        utils.check_array(X)
-        utils.check_X_y(X, y)
-        utils.indexable(X)
-        utils.indexable(y)
+        sklearn.utils.check_array(X)
+        sklearn.utils.check_X_y(X, y)
+        sklearn.utils.indexable(X)
+        sklearn.utils.indexable(y)
 
         # Check this. https://scikit-learn.org/stable/developers/utilities.html#developers-utils
-        utils.assert_all_finite(X)
-        utils.assert_all_finite(y)
+        sklearn.utils.assert_all_finite(X)
+        sklearn.utils.assert_all_finite(y)
 
         self.X_ = X
         self.y_ = y
@@ -142,10 +144,11 @@ class GeneEstimator(base.RegressorMixin):
         self.est.fit(X, self.check_target(y))
         return self
 
-    def predict(self, X: np.ndarray) -> np.ndarray:
-        """ """
-        utils.validation.check_is_fitted(self.est)
-        return self.est.predict(X)
+    # def predict(self, X: np.ndarray) -> np.ndarray:
+    #     """ """
+    #     utils.validation.check_is_fitted(self.est)
+    #     y = self.est.predict(X)
+    #     return y
 
     def score(self, X: np.ndarray, y: np.ndarray, **kwargs) -> np.ndarray:
         """ """
@@ -154,7 +157,7 @@ class GeneEstimator(base.RegressorMixin):
             y = [y_i(self.decay_coeff) for y_i in y]
         except:
             pass
-        utils.validation.check_is_fitted(self.est)
+        sklearn.utils.validation.check_is_fitted(self.est)
         return self.est.score(X, self.check_target(y))
 
     def compute_feature_importances(self) -> np.ndarray:
@@ -178,7 +181,7 @@ class GeneEstimator(base.RegressorMixin):
         keep one feature from each cluster. This strategy is explored in the following example: Permutation Importance
          with Multicollinear or Correlated Features."""
 
-        utils.validation.check_is_fitted(self.est)
+        sklearn.utilsvalidation.check_is_fitted(self.est)
 
         if X_test is None or y_test is None:
             print("Permutation importance on the train samples")

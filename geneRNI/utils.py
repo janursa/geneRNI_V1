@@ -26,6 +26,7 @@ from typing import Any
 from geneRNI import types_
 from geneRNI.models import get_estimator_wrapper
 
+
 def is_lambda_function(obj: Any) -> bool:
     return isinstance(obj, types.LambdaType) and (obj.__name__ == '<lambda>')
 def verboseprint(flag, message):
