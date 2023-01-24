@@ -24,7 +24,7 @@ from typing import Dict, Any
 import numpy as np
 from sklearn.linear_model import Ridge
 from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import PowerTransformer
+from sklearn.preprocessing import StandardScaler
 
 from geneRNI.models import BaseWrapper
 
@@ -34,7 +34,7 @@ class RidgeWrapper(BaseWrapper):
     @staticmethod
     def new_estimator(*args, **kwargs) -> Pipeline:
         return Pipeline(steps=[
-            ('pt', PowerTransformer(method='box-cox', standardize=True)),
+            ('pt', StandardScaler()),
             ('ridge', Ridge(**kwargs))
         ])
 
@@ -54,5 +54,5 @@ class RidgeWrapper(BaseWrapper):
     @staticmethod
     def get_grid_parameters() -> Dict[str, Any]:
         return dict(
-            alpha=10. ** np.arange(-3, 4)
+            # alpha=10. ** np.arange(-3, 4)
         )

@@ -24,6 +24,8 @@ def shuffle_cross_validate(est, X, y, cv:int):
 
     # cv = model_selection.KFold(n_splits=cv, shuffle=True)
     oo = model_selection.cross_validate(est, X, y, cv=cv)
+    # print(oo['test_score'])
+    # aa
     test_score = np.mean(oo['test_score'])
     return test_score
 def loo_cross_validate(est, X, y):
