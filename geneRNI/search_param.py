@@ -15,67 +15,53 @@ from typing import Tuple
 import numpy as np
 from pathos.pools import ParallelPool as Pool
 from sklearn import model_selection
+from sklearn.metrics import r2_score
 
-from .geneRNI import GeneEstimator
-from .data import Data
+from geneRNI.core import GeneEstimator
+from geneRNI.data import Data
 
-def shuffle_cross_validate(est, X, y, cv:int):
-    # rs = model_selection.ShuffleSplit(n_splits=cv)
 
-    # cv = model_selection.KFold(n_splits=cv, shuffle=True)
+def shuffle_cross_validate(
+        est: GeneEstimator,
+        X: np.ndarray,
+        y: np.ndarray,
+        cv: int = 5
+) -> float:
+    cv = model_selection.KFold(n_splits=cv, shuffle=True)
     oo = model_selection.cross_validate(est, X, y, cv=cv)
-    # print(oo['test_score'])
-    # aa
-    test_score = np.mean(oo['test_score'])
-    return test_score
-def loo_cross_validate(est, X, y):
+    return float(np.mean(oo['test_score']))
+
+
+def loo_cross_validate(est: GeneEstimator, X: np.ndarray, y: np.ndarray) -> float:
     """Leave one out cross validation
     """
-    test_scores = []
+    y_target, y_pred = [], []
     loo = model_selection.LeaveOneOut()
     for i, (train_index, test_index) in enumerate(loo.split(X)):
         X_train, y_train = X[train_index], y[train_index]
         X_test, y_test = X[test_index], y[test_index]
         est.fit(X_train, y_train)
-        test_scores.append(est.score(X_test, y_test)) 
-    print(test_scores)
-    return np.mean(test_scores)
-
-def evaluate_single(X: np.ndarray, y: np.ndarray, param: dict, cv: int = 5, train_flag=False, **specs) -> Tuple[GeneEstimator, float]:
-    """ evalutes the gene estimator for a given param and returns a test score 
-    for RF, the test score is oob_score. For the rest, cv is applied.
-    train_flag -- to use training score 
-    """
-    use_oob_flag = False
-    # leave_one_out = False
-    if param['estimator_t'] == 'RF':
-        use_oob_flag = True
-    # elif param['estimator_t'] == 'ridge':
-    #     leave_one_out = True
-    # else:
-    #     #TODO: define this
-    #     raise ValueError('Define evaluation strategy')
-    
-    est = GeneEstimator(**param)
-    if use_oob_flag:
-        est.fit(X, y)
-        test_score = est.est.oob_score_
-    else:
-        # test_score = loo_cross_validate(est, X, y)  
-        test_score = shuffle_cross_validate(est, X, y, cv)      
-
-    return test_score
+        y_pred += list(est.predict(X_test))
+        y_target += list(y_test)
+    return r2_score(y_target, y_pred)
 
 
-def grid_search_single_gene(X: np.ndarray, y: np.ndarray, param: dict, permts: dict, **specs):
+def grid_search_single_gene(
+        X: np.ndarray,
+        y: np.ndarray,
+        param: dict,
+        permts: dict,
+        loo: bool = True,
+        **specs
+):
     """ evaluate all the permutations for one gene,  """
     #- store the data of all permutation
     testscores = []
-    for permt in permts:  
+    for permt in permts:
         param_a = {**param, **permt}
-        testscore = evaluate_single(X, y, param_a,**specs)
+        testscore = evaluate_single(X, y, param_a, **specs)
         testscores.append(testscore)
-    # find the best candidate amongst different permutation. Max score is considered best score. 
+    # find the best candidate amongst different permutation. Max score is considered best score.
     # best_testscore = max(testscores)
     # index = testscores.index(best_testscore)
     # best_param = permts[index]
@@ -86,12 +72,45 @@ def grid_search_single_gene(X: np.ndarray, y: np.ndarray, param: dict, permts: d
     return testscores
 
 
-def grid_search_single_permut(Xs, ys, param: dict, permt: dict, cv: int = 4, **specs):
+def evaluate_single(
+        X: np.ndarray,
+        y: np.ndarray,
+        param: dict,
+        loo: bool = True,
+        cv: int = 5,
+        train_flag=False,
+        **specs
+) -> Tuple[GeneEstimator, float]:
+    """ evalutes the gene estimator for a given param and returns a test score
+    for RF, the test score is oob_score. For the rest, cv is applied.
+    train_flag -- to use training score
+    """
+    use_oob_flag = False
+    if param['estimator_t'] == 'RF':
+        use_oob_flag = True
+
+    est = GeneEstimator(**param)
+    if use_oob_flag:
+        est.fit(X, y)
+        test_score = est.est.oob_score_
+    else:
+        y = est.preprocess_target(y)
+        if loo:
+            test_score = loo_cross_validate(est, X, y)
+        else:
+            test_score = shuffle_cross_validate(est, X, y, cv=cv)
+
+    # print(est.predict(X))
+
+    return test_score
+
+
+def grid_search_single_permut(Xs, ys, param: dict, permt: dict, **specs):
     """ evalute all genes for one permutation of param """
     param_a = {**param, **permt}
     testscores = []
     for X, y in zip(Xs, ys):
-        testscore = evaluate_single(X, y, param_a,**specs)
+        testscore = evaluate_single(X, y, param_a, **specs)
         testscores.append(testscore)
     return testscores
 
@@ -114,14 +133,14 @@ def map_permut(args):
     return i, grid_search_single_permut(**args_rest)
 
 
-def run(data: Data, param: dict, permts:list, n_jobs:int, **specs):
+def run(data: Data, param: dict, permts: list, n_jobs: int, **specs):
     """Evaluates all permts for each genes"""
     time_start = time.time()
     if 'n_jobs' in param: 
         del param['n_jobs']
     n_genes = len(data)
     # Run the search
-    testscores = [None for _ in range(n_genes)] # for all nodes
+    testscores = [None for _ in range(n_genes)]  # for all nodes
     if n_jobs == 1:  # serial
         for i in range(n_genes):
             output = map_gene({'i': i, 'data': data, 'param': param, 'permts': permts, **specs})
@@ -147,7 +166,7 @@ def run(data: Data, param: dict, permts:list, n_jobs:int, **specs):
                 Xs.append(X)
                 ys.append(y)
 
-            input_data = [{'i': i, 'Xs': Xs, 'ys':ys, 'param': param, 'permt': permts[i], **specs} for i in range(len(permts))]
+            input_data = [{'i': i, 'Xs': Xs, 'ys': ys, 'param': param, 'permt': permts[i], **specs} for i in range(len(permts))]
             all_output = pool.map(map_permut, input_data)
             
             all_output.sort(key=lambda x: x[0])
@@ -172,7 +191,18 @@ def permutation(param_grid):
     return permts
 
 
-def rand_search(data: Data, param, param_grid, n_jobs=1, n_sample=60, random_state=None, i_start=0, i_end=1, output_dir='', **specs):
+def rand_search(
+        data: Data,
+        param,
+        param_grid,
+        n_jobs=1,
+        n_sample=60,
+        random_state=None,
+        i_start=0,
+        i_end=1,
+        output_dir='',
+        **specs
+):
     # print('Grid params:', param_grid)
     permts = permutation(param_grid)
     print('stats: %d genes %d permts %d threads' % (len(data), len(permts), n_jobs))
@@ -200,6 +230,7 @@ def rand_search(data: Data, param, param_grid, n_jobs=1, n_sample=60, random_sta
         FILE = os.path.join(output_dir, f'data_{i}.txt')
         np.savetxt(FILE, testscores, delimiter=',')
 
+
 def pool(output_dir, n_repeat):
     """Pools iterative results 
     Each data in stack contains node results for all permuts, i.e. scores[i_gene][i_purmut].
@@ -213,7 +244,7 @@ def pool(output_dir, n_repeat):
         FILE = os.path.join(output_dir, f'data_{i}.txt')
         scores = np.genfromtxt(FILE, delimiter=',')
         scores_stack.append(scores)    
-    print('stack shape: n_repeat*n_genes*n_permut: ',np.array(scores_stack).shape)
+    print('stack shape: n_repeat*n_genes*n_permut: ', np.array(scores_stack).shape)
     #- reformat from [n_repeat][i_gene][i_purmut] to [i_gene][i_purmut][n_repeat]
     scores_pool = np.stack(scores_stack, axis=2)
     # print(scores_pool[2][0])
@@ -223,11 +254,7 @@ def pool(output_dir, n_repeat):
     # print('scores mean shape: n_genes*n_permut: ', scores_mean.shape)
     best_scores = np.max(scores_mean, axis=1)
     # print('scores best shape: n_genes: ', best_scores.shape)
-    best_indices = np.argmax(scores_mean, axis=1) # highest scores across mutations
+    best_indices = np.argmax(scores_mean, axis=1)  # highest scores across mutations
     best_params= [sampled_permts[i] for i in best_indices]
     print(f'Best score -> min:{np.min(best_scores)},  average: {np.mean(best_scores)}, std: {np.std(best_scores)}')
     return best_scores, best_params
-
-
-
-

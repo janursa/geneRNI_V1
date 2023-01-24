@@ -34,7 +34,7 @@ class RidgeWrapper(BaseWrapper):
     @staticmethod
     def new_estimator(*args, **kwargs) -> Pipeline:
         return Pipeline(steps=[
-            ('pt', StandardScaler()),
+            ('scaler', StandardScaler()),
             ('ridge', Ridge(**kwargs))
         ])
 
