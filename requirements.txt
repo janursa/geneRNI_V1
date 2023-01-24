@@ -1,5 +1,9 @@
+# Machine learning
 numpy
 scipy
 sklearn
 pathos
 shap
+
+# GRN inference
+portia-grn

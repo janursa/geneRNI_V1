@@ -100,8 +100,6 @@ def evaluate_single(
         else:
             test_score = shuffle_cross_validate(est, X, y, cv=cv)
 
-    # print(est.predict(X))
-
     return test_score
 
 
@@ -148,6 +146,7 @@ def run(data: Data, param: dict, permts: list, n_jobs: int, **specs):
             testscores[i] = testscores_node
     else:  # parallel
         # multithreading happens either on gene_n or permuts, depending which one is bigger
+
         pool = Pool(n_jobs)
         if n_genes >= len(permts):
             print('Gene-based multi threading')
@@ -178,7 +177,7 @@ def run(data: Data, param: dict, permts: list, n_jobs: int, **specs):
                 testscores = np.c_[testscores, testscores_all_genes]
             
     time_end = time.time()
-    print('Param search is completed in %.3f seconds' % (time_end-time_start))
+    print('Param search completed in %.3f seconds' % (time_end-time_start))
     return testscores
 
 
@@ -255,6 +254,6 @@ def pool(output_dir, n_repeat):
     best_scores = np.max(scores_mean, axis=1)
     # print('scores best shape: n_genes: ', best_scores.shape)
     best_indices = np.argmax(scores_mean, axis=1)  # highest scores across mutations
-    best_params= [sampled_permts[i] for i in best_indices]
+    best_params = [sampled_permts[i] for i in best_indices]
     print(f'Best score -> min:{np.min(best_scores)},  average: {np.mean(best_scores)}, std: {np.std(best_scores)}')
     return best_scores, best_params

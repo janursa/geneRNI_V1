@@ -13,7 +13,7 @@ pd.options.mode.chained_assignment = None
 
 def GRNbenchmark_single(specs, estimator_t, method, noise_level, network):
     print(f'Running single GRNbenchmark: {estimator_t} {method} {noise_level} {network}')
-    out_data = benchmarks.process_data_grn_benchmark(method, noise_level, network, estimator_t=estimator_t)
+    out_data = benchmarks.Benchmark.process_data_grn_benchmark(method, noise_level, network, estimator_t=estimator_t)
     out_defaults = utils.default_settings(estimator_t=estimator_t)
     best_scores, best_params, best_ests, sampled_permts = search_param.rand_search(
         out_data, param=out_defaults.param, param_grid=out_defaults.param_grid, **specs)

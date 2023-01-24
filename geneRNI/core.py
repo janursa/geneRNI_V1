@@ -17,6 +17,7 @@ import numpy as np
 import sklearn
 from sklearn import base
 from sklearn import inspection
+from sklearn.preprocessing import StandardScaler
 
 from geneRNI.data import Data
 from geneRNI.links import format_links
@@ -37,7 +38,17 @@ sys.path.insert(0, dir_main)  # TODO: not recommended (let's make a setup.py fil
 #        This is because multiprocessing uses pickle that has problem with lambda function.
 
 
-def network_inference(data: Data, gene_names, param, param_unique=None, verbose=True, test_size=0, output_dir=''):
+def network_inference(
+        data: Data,
+        gene_names,
+        param,
+        param_unique=None,
+        grn_normalization: bool = True,
+        grn_correction: str = 'none',
+        verbose=True,
+        test_size=0,
+        output_dir=''
+):
     """ Determines links of network inference
     If the ests are given, use them instead of creating new ones.
     """
@@ -73,6 +84,15 @@ def network_inference(data: Data, gene_names, param, param_unique=None, verbose=
         ests[i].fit(X, y)
         
         links.append(ests[i].compute_feature_importances())
+    links = np.asarray(links)
+
+    # Normalization of the GRN adjacency matrix
+    if grn_normalization:
+        links = np.abs(links)
+        sums_ = np.sum(links, axis=0)
+        mask = (sums_ > 0)
+        links[:, mask] /= sums_[np.newaxis, mask]
+    links = correct_grn_matrix(links, method=grn_correction)
 
     # Show scores
     verboseprint(verbose, f'\nnetwork inference: train score, mean: {np.mean(train_scores)} std: {np.std(train_scores)}')
@@ -109,6 +129,7 @@ class GeneEstimator(base.RegressorMixin):
         self.estimator_t: str = estimator_t
         self.decay_coeff: float = decay_coeff
         self.est = None
+        self.y_scaler: StandardScaler = StandardScaler()
 
         # estimators also need to declare any non-optional parameters to __init__ in the
         # self._required_parameters = ('allow_nan')
@@ -133,7 +154,9 @@ class GeneEstimator(base.RegressorMixin):
         '''Attributes that have been estimated from the data must always have a name ending with trailing underscore'''
         '''The estimated attributes are expected to be overridden when you call fit a second time.'''
 
+        # Preprocess y
         y = self.preprocess_target(y)
+        y = self.y_scaler.fit_transform(y[:, np.newaxis]).reshape(len(y))
 
         sklearn.utils.check_array(X)
         sklearn.utils.check_X_y(X, y)
@@ -154,12 +177,19 @@ class GeneEstimator(base.RegressorMixin):
     def predict(self, X: np.ndarray) -> np.ndarray:
         sklearn.utils.validation.check_is_fitted(self.est)
         y_hat = self.est.predict(X)
+
+        # Predictions are centered and scaled -> restore the original mean and variance
+        y_hat = self.y_scaler.inverse_transform(y_hat[:, np.newaxis]).reshape(len(y_hat))
+
         return y_hat
 
     def score(self, X: np.ndarray, y: np.ndarray, **kwargs) -> np.ndarray:
         """ """
-        # apply decay_coeff to y
+
+        # Preprocess y
         y = self.preprocess_target(y)
+        y = self.y_scaler.transform(y[:, np.newaxis]).reshape(len(y))
+
         sklearn.utils.validation.check_is_fitted(self.est)
         return self.est.score(X, y)
 

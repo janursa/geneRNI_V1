@@ -19,7 +19,7 @@ pd.options.mode.chained_assignment = None
 
 def dream4_single(estimator_t, size, network):
     out_defaults = utils.default_settings(estimator_t=estimator_t)
-    out_data = benchmarks.process_data_dream4(size=size, network=network, estimator_t=estimator_t, verbose=False)
+    out_data = benchmarks.Benchmark.process_data_dream4(size=size, network=network, estimator_t=estimator_t, verbose=False)
 
     # Load optimal hyper-parameters
     results_dir = os.path.join(dir_main, f'results/dream4/{estimator_t}/param_search_dream_{size}_{network}.txt')
@@ -28,14 +28,14 @@ def dream4_single(estimator_t, size, network):
     best_scores, best_params = out['best_scores'], out['best_params']
 
     # Network inference
-    _, _, _, gene_names = benchmarks.f_data_dream4(size, network)
+    _, _, _, gene_names = benchmarks.Benchmark.f_data_dream4(size, network)
     _, train_scores, links, oob_scores, test_scores = ni.network_inference(
         out_data, gene_names=gene_names, param=out_defaults.param, param_unique=best_params, verbose=False
     )
     score = oob_scores if (estimator_t == 'RF') else test_scores
     
     # calculate PR and ROC AUCs
-    golden_links = benchmarks.f_golden_dream4(size, network)
+    golden_links = benchmarks.Benchmark.f_golden_dream4(size, network)
     average_precision = evaluation.calculate_PR(gene_names, links, golden_links)
     auc_roc = evaluation.calculate_auc_roc(gene_names, links, golden_links)
     print(f'completed {size} {network}')
