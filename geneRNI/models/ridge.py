@@ -33,10 +33,6 @@ class RidgeWrapper(BaseWrapper):
 
     @staticmethod
     def new_estimator(*args, **kwargs) -> Pipeline:
-        # Pre-processing (mostly for non-tree-based models)
-        # transformer = PowerTransformer(method='box-cox', standardize=True, copy=False)
-        # transformer.fit_transform(X + 1e-15)
-        # transformer.transform(X + 1e-15)
         return Pipeline(steps=[
             ('pt', PowerTransformer(method='box-cox', standardize=True)),
             ('ridge', Ridge(**kwargs))
