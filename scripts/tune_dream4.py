@@ -19,7 +19,7 @@ pd.options.mode.chained_assignment = None
 
 def dream4_single(specs, estimator_t, size, network):
     print(f'Running dream4 for network size {size}. network {network}, and estimator {estimator_t}')
-    out_data = benchmarks.process_data_dream4(size=size, network=network, estimator_t=estimator_t)
+    out_data = benchmarks.Benchmark.process_data_dream4(size=size, network=network, estimator_t=estimator_t)
     out_defaults = utils.default_settings(estimator_t=estimator_t)
     best_scores, best_params, best_ests, sampled_permts = search_param.rand_search(
         out_data,

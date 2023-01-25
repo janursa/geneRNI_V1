@@ -2,9 +2,7 @@ from typing import Tuple, Optional
 
 import numpy as np
 from scipy.sparse import coo_matrix
-from sklearn import model_selection
 from sklearn import utils
-from sklearn.preprocessing import PowerTransformer
 
 
 class Data:
@@ -123,7 +121,7 @@ class Data:
         y = np.asarray(y)
         return X, y
 
-    def __getitem__(self, i_gene: int) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    def __getitem__(self, i_gene: int) -> Tuple[np.ndarray, np.ndarray]:
         """ Reformats the raw data for both static and dynamic analysis
 
         For time series data, TS_data should be in n_exp*n_time*n_genes format. For For static analysis,

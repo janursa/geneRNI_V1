@@ -18,7 +18,7 @@ pd.options.mode.chained_assignment = None
 
 def dream5_single(specs, estimator_t, network):
     print(f'Running dream5, network {network}, and estimator {estimator_t}')
-    out_data = benchmarks.process_data_dream5(network=network, estimator_t=estimator_t)
+    out_data = benchmarks.Benchmark.process_data_dream5(network=network, estimator_t=estimator_t)
     out_defaults = utils.default_settings(estimator_t=estimator_t)
     best_scores, best_params, best_ests, sampled_permts = search_param.rand_search(
         out_data,
