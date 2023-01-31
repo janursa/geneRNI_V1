@@ -12,10 +12,10 @@ class Data:
             gene_names,
             ss_data,
             ts_data,
-            time_points: Optional[list],
+            time_points: list[list[int]], # n_experiment*n_time
             regulators='all',
-            perturbations=None,
-            KO=None,
+            perturbations: list[list[float]] = None, # n_sample*n_gene
+            KO: list[str] = None, # n_gene
             h: int = 1,
             verbose: bool = True,
             **specs
