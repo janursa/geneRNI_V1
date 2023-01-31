@@ -22,7 +22,9 @@ from sklearn.preprocessing import StandardScaler
 from geneRNI.data import Data
 from geneRNI.links import format_links
 from geneRNI.models import get_estimator_wrapper
+
 from geneRNI.utils import is_lambda_function, verbose_print
+from geneRNI.grn.correction import correct_grn_matrix
 
 dir_main = os.path.join(pathlib.Path(__file__).parent.resolve(), '..')
 sys.path.insert(0, dir_main)  # TODO: not recommended (let's make a setup.py file instead)

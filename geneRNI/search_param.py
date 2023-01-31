@@ -51,7 +51,6 @@ def grid_search_single_gene(
         y: np.ndarray,
         param: dict,
         permts: dict,
-        loo: bool = True,
         **specs
 ):
     """ evaluate all the permutations for one gene,  """
@@ -76,7 +75,7 @@ def evaluate_single(
         X: np.ndarray,
         y: np.ndarray,
         param: dict,
-        loo: bool = True,
+        loo: bool = False,
         cv: int = 5,
         train_flag=False,
         **specs
