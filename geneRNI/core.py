@@ -22,7 +22,7 @@ from sklearn.preprocessing import StandardScaler
 from geneRNI.data import Data
 from geneRNI.links import format_links
 from geneRNI.models import get_estimator_wrapper
-from geneRNI.utils import is_lambda_function, verboseprint
+from geneRNI.utils import is_lambda_function, verbose_print
 
 dir_main = os.path.join(pathlib.Path(__file__).parent.resolve(), '..')
 sys.path.insert(0, dir_main)  # TODO: not recommended (let's make a setup.py file instead)
@@ -95,13 +95,13 @@ def network_inference(
     links = correct_grn_matrix(links, method=grn_correction)
 
     # Show scores
-    verboseprint(verbose, f'\nnetwork inference: train score, mean: {np.mean(train_scores)} std: {np.std(train_scores)}')
+    verbose_print(verbose, f'\nnetwork inference: train score, mean: {np.mean(train_scores)} std: {np.std(train_scores)}')
     if test_size != 0:
-        verboseprint(
+        verbose_print(
             verbose,
             f'network inference: test score, mean: {np.mean(test_scores)} std: {np.std(test_scores)}')
     if len(oob_scores) > 0:
-        verboseprint(
+        verbose_print(
             verbose,
             f'network inference: oob score (only RF), mean: {np.mean(oob_scores)} std: {np.std(oob_scores)}')
 

@@ -78,10 +78,12 @@ def format_links(
     df = sort_links(df, gene_names)
     return df
 
+
 def output(links: pd.DataFrame, file_name: str):
     if file_name is not None and not isinstance(file_name, str):
         raise ValueError('input argument file_name must be a string')
     links.to_csv(file_name, index=False)
+
 
 def sort_links(links, sorted_gene_names, regulator_tag='Regulator', target_tag='Target', weight_tag='Weight'):
     """ Sorts links in based on gene numbers. The output looks like:

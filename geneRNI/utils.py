@@ -22,24 +22,21 @@
 import types
 from typing import Any
 
-
-from geneRNI import types_
+from geneRNI.types_ import DefaultParamType
 from geneRNI.models import get_estimator_wrapper
 
 
 def is_lambda_function(obj: Any) -> bool:
     return isinstance(obj, types.LambdaType) and (obj.__name__ == '<lambda>')
-def verboseprint(flag, message):
+
+
+def verbose_print(flag: bool, message: str):
     if flag:
         print(message)
-def default_settings(estimator_t):
-    test_size = None
-    param = get_estimator_wrapper(estimator_t).get_default_parameters()
-    param_grid = get_estimator_wrapper(estimator_t).get_grid_parameters()
-    if estimator_t == 'HGB':
-        test_size = 0.25
-    random_state_data = None
-    random_state = None
-    bootstrap_fold = None
-    return types_.DefaultParamType(param, param_grid, test_size, bootstrap_fold, random_state, random_state_data)
 
+
+def default_settings(estimator_t: str) -> DefaultParamType:
+    wrapper = get_estimator_wrapper(estimator_t)
+    param = wrapper.get_default_parameters()
+    param_grid = wrapper.get_grid_parameters()
+    return DefaultParamType(param, param_grid)

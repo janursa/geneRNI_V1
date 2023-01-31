@@ -12,17 +12,10 @@ from typing import NamedTuple, Optional
 import numpy as np
 
 
-class DataType(NamedTuple):
-    Xs_train: np.array
-    ys_train: np.array
-    Xs_test: Optional[np.array] = None
-    ys_test: Optional[np.array] = None
-
-
 class DefaultParamType(NamedTuple):
     param: dict
     param_grid: dict
-    test_size: float
-    bootstrap_fold: int
-    random_state: int
-    random_state_data: int
+    test_size: Optional[float] = None  # TODO: default value?
+    bootstrap_fold: Optional[int] = None
+    random_state: Optional[int] = None
+    random_state_data: Optional[int] = None

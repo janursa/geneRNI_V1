@@ -19,7 +19,15 @@
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #  MA 02110-1301, USA.
 
+import math
 
-def test_hello_world():
-    print('Hello world')
+from geneRNI.utils import is_lambda_function
+
+
+def test_lambda_function():
+    assert is_lambda_function(lambda x: 2 * x + 1)
+    assert not is_lambda_function(is_lambda_function)
+    assert not is_lambda_function(math.exp)
+    assert not is_lambda_function(26.92)
+    assert not is_lambda_function('Hello world')
     assert True

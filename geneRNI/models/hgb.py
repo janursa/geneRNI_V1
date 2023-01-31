@@ -18,7 +18,6 @@
 #  along with this program; if not, write to the Free Software
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #  MA 02110-1301, USA.
-
 from typing import Dict, Any
 
 import numpy as np
@@ -36,8 +35,9 @@ class HGBWrapper(BaseWrapper):
     @staticmethod
     def compute_feature_importances(estimator: HistGradientBoostingRegressor) -> np.array:
         # TODO: implement this
-        return np.array([e.tree_.compute_feature_importances(normalize=False)
-                                for e in estimator.estimators_])
+        # return np.array([e.tree_.compute_feature_importances(normalize=False) for e in estimator.estimators_])
+        raise NotImplementedError('Feature importances are not implemented for HGB.')
+        return np.ones(estimator.n_features_in_)
 
     @staticmethod
     def get_default_parameters() -> Dict[str, Any]:

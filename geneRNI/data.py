@@ -1,4 +1,4 @@
-from typing import Tuple, Optional
+from typing import Tuple, Optional, Generator
 
 import numpy as np
 from scipy.sparse import coo_matrix
@@ -50,21 +50,10 @@ class Data:
                 expr_data = self.ts_data[i]
                 self.ts_data[i] = expr_data[indices, :]
 
-    def process_time_series(self, i_gene: int, h: int = 1) -> Tuple[np.ndarray, np.ndarray]:
+    def process_time_series(self, input_idx: np.ndarray, target_gene: int, h: int = 1) -> Tuple[np.ndarray, np.ndarray]:
         """ Reformat data for time series analysis
 
         """
-
-        if self.regulators == 'all':
-            input_idx = list(range(self.n_genes))
-        else:
-            input_idx = self.regulators[i_gene]
-
-        # TODO: Not sure I understand what was supposed to be done here
-        # try:
-        #    input_idx.remove(self.ko_indices[i_gene])
-        # except UnboundLocalError:
-        #    pass
 
         nexp = len(self.ts_data)
         nsamples_time = sum([expr_data.shape[0] for expr_data in self.ts_data])
@@ -80,7 +69,7 @@ class Data:
             exp_timeseries_x = exp_timeseries[:n_time - h, input_idx]
             # current_timeseries_output = (exp_timeseries[h:,i_gene] - exp_timeseries[:n_time-h,i_gene]) / exp_time_diff + decay_coeffs[i_gene]*exp_timeseries[:n_time-h,i_gene]
             for ii in range(len(exp_time_diff)):
-                f_dy_dt = lambda decay_coeff_i, i=i, ii=ii, i_gene=i_gene: float(
+                f_dy_dt = lambda decay_coeff_i, i=i, ii=ii, i_gene=target_gene: float(
                     (self.ts_data[i][ii + 1:ii + 2, i_gene] - self.ts_data[i][ii:ii + 1, i_gene]) / exp_time_diff[
                         ii] + decay_coeff_i * self.ts_data[i][ii:ii + 1, i_gene])
                 y.append(f_dy_dt)
@@ -90,36 +79,31 @@ class Data:
         y = np.asarray(y)
         return X, y
 
-    def process_static(self, i_gene: int) -> Tuple[np.ndarray, np.ndarray]:
+    def process_static(self, input_idx: np.ndarray, target_gene: int) -> Tuple[np.ndarray, np.ndarray]:
         """ Reformat data for static analysis
         SS_data -- static data in the format n_samples*n_genes
         perturbations -- initial changes to the genes such as adding certain values. n_samples*n_genes
         KO -- the list of knock-out gene names. For now, each row has 1 gene name. TODO: one gene for all samples; more than one genes for one sample
         """
 
-        if self.regulators == 'all':
-            input_idx = list(range(self.n_genes))
-        else:
-            input_idx = self.regulators[i_gene]
-
-        # TODO: Not sure I understand what was supposed to be done here
-        # try:
-        #    input_idx.remove(self.ko_indices[i_gene])
-        # except UnboundLocalError:
-        #    pass
-
         X = self.ss_data[:, input_idx]
-
-        y = []
-        for i_sample, sample_data in enumerate(self.ss_data):
-            # add perturbations
-            if self.perturbations is not None:
-                f_dy_dt = float(self.ss_data[i_sample][i_gene]) - float(self.perturbations[i_sample][i_gene])
-            else:
-                f_dy_dt = float(self.ss_data[i_sample][i_gene])
-            y.append(f_dy_dt)
-        y = np.asarray(y)
+        if self.perturbations is not None:
+            y = self.ss_data[:, target_gene] - self.perturbations[:, target_gene]
+        else:
+            y = self.ss_data[:, target_gene]
         return X, y
+
+    @staticmethod
+    def resample(X, y, n_samples, replace=True, **specs) -> Tuple[np.ndarray, np.ndarray]:
+        """resampling for bootstraping"""
+        if n_samples is None:
+            n_samples = 2 * len(y)
+
+        X_sparse = coo_matrix(X)
+        X_b, _, y_b = utils.resample(X, X_sparse, y, n_samples=n_samples, replace=replace, **specs)
+        # XX = utils.resample((X,y), n_samples = n_samples, replace=replace)
+        # print(len(XX[0]))
+        return X_b, y_b
 
     def __getitem__(self, i_gene: int) -> Tuple[np.ndarray, np.ndarray]:
         """ Reformats the raw data for both static and dynamic analysis
@@ -144,21 +128,26 @@ class Data:
 
         # TODO: add KO to time series data
 
+        # Determine list of regulators
+        if self.regulators == 'all':
+            input_idx = list(range(self.n_genes))
+        else:
+            input_idx = self.regulators[i_gene]
+        input_idx.remove(i_gene)
+        # TODO: Not sure I understand what was supposed to be done here
+        # try:
+        #    input_idx.remove(self.ko_indices[i_gene])
+        # except UnboundLocalError:
+        #    pass
+        input_idx = np.asarray(input_idx, dtype=int)
+
         X, y = [], []
         if self.ts_data is not None:
-            X_d, y_d = self.process_time_series(i_gene, h=self.h)
-            # verboseprint(
-            #    self.verbose,
-            #    f'dynamic data: ngenes: {len(ys_d)}, nsamples: {len(ys_d[0])}, n regulators: {len(Xs_d[0][0])}'
-            # )
+            X_d, y_d = self.process_time_series(input_idx, i_gene, h=self.h)
             X.append(X_d)
             y.append(y_d)
         if self.ss_data is not None:
-            X_s, y_s = self.process_static(i_gene)
-            # verboseprint(
-            #    self.verbose,
-            #    f'static data: ngenes: {len(ys_s)}, nsamples: {len(ys_s[0])}, n regulators: {len(Xs_s[0][0])}'
-            # )
+            X_s, y_s = self.process_static(input_idx, i_gene)
             X.append(X_s)
             y.append(y_s)
 
@@ -170,17 +159,9 @@ class Data:
 
         return X, y
 
-    @staticmethod
-    def resample(X, y, n_samples, replace=True, **specs) -> Tuple[np.ndarray, np.ndarray]:
-        """resampling for bootstraping"""
-        if n_samples is None:
-            n_samples = 2 * len(y)
-
-        X_sparse = coo_matrix(X)
-        X_b, _, y_b = utils.resample(X, X_sparse, y, n_samples=n_samples, replace=replace, **specs)
-        # XX = utils.resample((X,y), n_samples = n_samples, replace=replace)
-        # print(len(XX[0]))
-        return X_b, y_b
+    def __iter__(self) -> Generator[Tuple[np.ndarray, np.ndarray], None, None]:
+        for i in range(self.__len__()):
+            yield self.__getitem__(i)
 
     def __len__(self) -> int:
         return self.n_genes
