@@ -7,6 +7,7 @@ from setuptools import setup
 
 packages = [
     'geneRNI',
+    'geneRNI.grn',
     'geneRNI.models'
 ]
 

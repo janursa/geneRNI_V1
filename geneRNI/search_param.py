@@ -10,7 +10,7 @@ import itertools
 import os
 import random
 import time
-from typing import List, Tuple
+from typing import List, Tuple, Any, Dict, Generator
 
 import numpy as np
 from pathos.pools import ParallelPool as Pool
@@ -167,13 +167,11 @@ def run(data: Data, param: dict, permts: list, n_jobs: int, **specs):
     return testscores
 
 
-def permutation(param_grid):
+def gen_permutations(param_grid: Dict[str, List[Any]]) -> Generator[Dict[str, Any], None, None]:
     tags = list(param_grid.keys())
     values = list(param_grid.values())
-    permts = []
-    for value in list(itertools.product(*values)):
-        permts.append({tag: i for tag, i in zip(tags, value)})
-    return permts
+    for combination in itertools.product(*values):
+        yield {tag: value for tag, value in zip(tags, combination)}
 
 
 def rand_search(
@@ -181,20 +179,20 @@ def rand_search(
         param,
         param_grid,
         n_jobs: int = 1,
-        n_sample: int = 60,
+        max_n_permutations: int = 60,
         random_state=None,
         i_start: int = 0,
         i_end: int = 1,
         output_dir: str = '',
         **specs
 ):
-    permts = permutation(param_grid)
+    permts = list(gen_permutations(param_grid))
     print('stats: %d genes %d permts %d threads' % (len(data), len(permts), n_jobs))
-    if len(permts) < n_sample:
+    if len(permts) < max_n_permutations:
         sampled_permts = permts
     else:
         random.seed(random_state)
-        sampled_permts = random.sample(permts, n_sample)
+        sampled_permts = random.sample(permts, max_n_permutations)
 
     # create the result dir if it doesnt exist
     if not os.path.isdir(output_dir):
