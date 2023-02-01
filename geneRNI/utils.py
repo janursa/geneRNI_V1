@@ -20,10 +20,18 @@
 #  MA 02110-1301, USA.
 
 import types
-from typing import Any
+from typing import Any, List, Union
+
+import numpy as np
 
 from geneRNI.types_ import DefaultParamType
 from geneRNI.models import get_estimator_wrapper
+
+
+class HashableDict(dict):
+
+    def __hash__(self):
+        return hash(tuple(sorted(self.items())))
 
 
 def is_lambda_function(obj: Any) -> bool:
@@ -40,3 +48,40 @@ def default_settings(estimator_t: str) -> DefaultParamType:
     param = wrapper.get_default_parameters()
     param_grid = wrapper.get_grid_parameters()
     return DefaultParamType(param, param_grid)
+
+
+def create_tf_mask(
+        gene_names: List[str],
+        regulators: Union[str, List[str], List[List[str]]]
+) -> np.ndarray:
+    n_genes = len(gene_names)
+    is_regulator = np.zeros((n_genes, n_genes), dtype=bool)
+    if len(gene_names) == len(set(gene_names)):
+        raise ValueError('Gene names list contains duplicate entries')
+    gene_dict = {gene_name: i for i, gene_name in enumerate(gene_names)}
+    if isinstance(regulators, str):
+        if regulators.lower().strip() == 'all':
+            is_regulator[:, :] = True
+            np.fill_diagonal(is_regulator, False)
+            return is_regulator
+        else:
+            raise ValueError(f'Invalid value for regulators list: {regulators}')
+    else:
+        if not isinstance(regulators, list):
+            raise ValueError('Regulators list should be a list object')
+        if len(regulators) == 0:
+            return is_regulator
+        if isinstance(regulators[0], list):
+            if len(regulators) != len(gene_names):
+                raise ValueError(
+                    f'Regulators nested list should be as long as the number of genes in the network')
+            for j in range(len(regulators)):
+                for gene_name in regulators[j]:
+                    i = gene_dict[gene_name]
+                    is_regulator[i, j] = True
+            return is_regulator
+        else:
+            for gene_name in regulators:
+                i = gene_dict[gene_name]
+                is_regulator[i, :] = True
+            return is_regulator

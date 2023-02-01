@@ -24,6 +24,7 @@ from typing import Tuple
 import numpy as np
 
 from geneRNI.search_param import gen_permutations
+from geneRNI.utils import HashableDict
 
 
 def create_easy_dataset() -> Tuple[np.ndarray, np.ndarray]:
@@ -50,4 +51,10 @@ def test_permutations():
         'h': ['A', 'B', 'C', 'D', 'E', 'F', 'G'],
         'j': [5.6, 23.0]
     }
-    assert len(list(gen_permutations(param_grid))) == 42
+    permutations = list(gen_permutations(param_grid))
+    assert len(permutations) == 42
+    already_seen = set()
+    for permutation in permutations:
+        permutation = HashableDict(permutation)
+        assert permutation not in already_seen
+        already_seen.add(permutation)

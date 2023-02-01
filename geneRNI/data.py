@@ -1,44 +1,80 @@
-from typing import Tuple, Optional, Generator
+from typing import Tuple, Optional, Generator, List, Union
 
 import numpy as np
 from scipy.sparse import coo_matrix
 from sklearn import utils
 
+from geneRNI.utils import create_tf_mask
+
 
 class Data:
+    """Iterable data class.
+
+    Iterating over a `Data` object will generate pairs of arrays `(X, y)` in the
+    scikit-learn fashion. Each pair `(X, y)` is composed of a target gene, whose values
+    are stored in `y`, and a set of putative regulators for that target gene stored
+    in `X` column-wise.
+
+    Args:
+        gene_names: An arbitrary list of unique gene names.
+        ss_data: An array of shape `(n_samples, n_genes)`, where `n_samples` and `n_genes`
+            are the number of observations and total number of genes in the network, respectively.
+        ts_data: A list of arrays of various shapes representing observations over time.
+            More specifically, the shape of `ts_data[i]` is `(n_samples[i], n_genes)`,
+            where `n_samples[i]` is the number of observations collected during experiment `i`,
+            and `n_genes` is the total number of genes in the network. The number of genes is
+            expected to be the same across experiments.
+        time_points: Should be provided if `ts_data is not None`. A list of 1-dimensional arrays
+            of same length as `ts_data`, where each array gives the time points of the different
+            observations in `ts_data`. More specifically, `len(time_points) == len(ts_data)`
+            and `ts_data[i].shape == (len(ts_data[i]),)`.
+        regulators: List of putative regulators. If "all", then all genes from the network will
+            be considered as candidates. If `regulators` is a list of strings, then each string element
+            will be considered as candidate for any other gene in the network.
+            If `regulators` is a list of lists of strings, then `len(regulators)` should be equal to the
+            total number of genes in the network, and each sublist `regulators[j]` contains the
+            candidates for `gene_names[j]`
+        perturbations: Protein concentrations added to the experiment.
+            An array of shape `(n_samples, n_genes)` identical to the shape of `ss_data`.
+        ko: TODO
+        h: Lag used for the finite approximation of the derivative of the target gene expression.
+        verbose: Whether to print extra debug messages.
+    """
 
     def __init__(
             self,
-            gene_names,
-            ss_data,
-            ts_data,
-            time_points: Optional[list],
-            regulators='all',
-            perturbations=None,
-            KO=None,
+            gene_names: List[str],
+            ss_data: Optional[np.ndarray] = None,
+            ts_data: Optional[List[np.ndarray]] = None,
+            time_points: Optional[List[np.ndarray]] = None,
+            regulators: Union[str, List[str], List[List[str]]] = 'all',
+            perturbations: Optional[np.ndarray] = None,
+            ko: List[str] = None,
             h: int = 1,
             verbose: bool = True,
             **specs
     ):
-        self.gene_names = gene_names
-        self.ss_data = ss_data
-        self.ts_data = ts_data
-        self.time_points = time_points
+        self.gene_names: List[str] = list(gene_names)
 
-        # Lag used for the finite approximation of the derivative of the target gene expression
+        # Boolean matrix of shape (n_genes, n_genes), where `is_regulator[i, j]`
+        # indicates where gene `i` is a putative regulator for target gene `j`.
+        self.is_regulator: np.ndarray = create_tf_mask(gene_names, regulators)
+
+        self.ko: List[str] = list(ko)
+        self.ss_data: Optional[np.ndarray] = ss_data
+        self.ts_data: Optional[List[np.ndarray]] = ts_data
+        self.time_points: Optional[List[np.ndarray]] = time_points
+        self.perturbations: Optional[np.ndarray] = perturbations
+        self.n_genes: int = len(self.gene_names)
         self.h: int = int(h)
 
         self.verbose: bool = verbose
         self.specs = specs
-        self.KO = KO
-        self.regulators = regulators
-        self.perturbations = perturbations
-        self.n_genes = len(self.gene_names)
 
         # Knock-outs
         self.ko_indices = []
-        if self.KO is not None:
-            for gene in self.KO:
+        if self.ko is not None:
+            for gene in self.ko:
                 self.ko_indices.append(gene_names.index(gene))
 
         # Re-order time points in increasing order
@@ -129,17 +165,12 @@ class Data:
         # TODO: add KO to time series data
 
         # Determine list of regulators
-        if self.regulators == 'all':
-            input_idx = list(range(self.n_genes))
-        else:
-            input_idx = self.regulators[i_gene]
-        input_idx.remove(i_gene)
         # TODO: Not sure I understand what was supposed to be done here
         # try:
         #    input_idx.remove(self.ko_indices[i_gene])
         # except UnboundLocalError:
         #    pass
-        input_idx = np.asarray(input_idx, dtype=int)
+        input_idx = np.where(self.is_regulator[:, i_gene])
 
         X, y = [], []
         if self.ts_data is not None:

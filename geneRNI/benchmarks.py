@@ -98,9 +98,9 @@ class Benchmark:
         pp = utils.default_settings(estimator_t)
         return Data(
             gene_names,
-            ss_data,
-            ts_data,
-            time_points,
+            ss_data=ss_data,
+            ts_data=ts_data,
+            time_points=time_points,
             test_size=pp.test_size,
             random_state=pp.random_state_data,
             **specs

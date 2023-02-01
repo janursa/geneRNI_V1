@@ -34,8 +34,8 @@ def create_data_set(n_genes: int, n_static: int, n_dynamic: int) -> Data:
         ts_data = np.random.rand(n_dynamic, n_genes)
         time_points = np.sort(np.random.rand(n_dynamic))
     data = Data(
-        gene_names, ss_data, ts_data, time_points,
-        regulators='all', perturbations=None, KO=None,  # TODO: test perturbations, regulators and KO
+        gene_names, ss_data=ss_data, ts_data=ts_data, time_points=time_points,
+        regulators='all', perturbations=None, ko=None,  # TODO: test perturbations, regulators and KO
         h=1, verbose=False
     )
     return data
