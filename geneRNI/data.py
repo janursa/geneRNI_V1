@@ -4,7 +4,7 @@ import numpy as np
 from scipy.sparse import coo_matrix
 from sklearn import utils
 
-from geneRNI.utils import create_tf_mask
+from geneRNI.utils import create_tf_mask, create_ko_mask
 
 
 class Data:
@@ -36,7 +36,9 @@ class Data:
             candidates for `gene_names[j]`
         perturbations: Protein concentrations added to the experiment.
             An array of shape `(n_samples, n_genes)` identical to the shape of `ss_data`.
-        ko: TODO
+        ko: Nested list of knocked out genes. All genes that have been knocked out in static
+            sample `ss_data[i]` should be listed in sublist `ko[i]`.
+            `len(ko)` should be equal to `len(ss_data)`.
         h: Lag used for the finite approximation of the derivative of the target gene expression.
         verbose: Whether to print extra debug messages.
     """
@@ -49,7 +51,7 @@ class Data:
             time_points: Optional[List[np.ndarray]] = None,
             regulators: Union[str, List[str], List[List[str]]] = 'all',
             perturbations: Optional[np.ndarray] = None,
-            ko: List[str] = None,
+            ko: Optional[List[List[str]]] = None,
             h: int = 1,
             verbose: bool = True,
             **specs
@@ -60,7 +62,15 @@ class Data:
         # indicates where gene `i` is a putative regulator for target gene `j`.
         self.is_regulator: np.ndarray = create_tf_mask(gene_names, regulators)
 
-        self.ko: List[str] = list(ko)
+        # Boolean matrix of shape (n_samples, n_genes), identical to the shape
+        # of `ss_data`, where `is_ok` indicates whether gene `j` has been
+        # knocked out in experiment/sample `i`.
+        if ss_data is not None:
+            self.is_ko: Optional[np.ndarray] = create_ko_mask(gene_names, ko, len(ss_data))
+            assert len(self.is_ko) == len(ss_data)
+        else:
+            self.is_ko: Optional[np.ndarray] = None
+
         self.ss_data: Optional[np.ndarray] = ss_data
         self.ts_data: Optional[List[np.ndarray]] = ts_data
         self.time_points: Optional[List[np.ndarray]] = time_points
@@ -71,20 +81,13 @@ class Data:
         self.verbose: bool = verbose
         self.specs = specs
 
-        # Knock-outs
-        self.ko_indices = []
-        if self.ko is not None:
-            for gene in self.ko:
-                self.ko_indices.append(gene_names.index(gene))
-
         # Re-order time points in increasing order
         if self.time_points is not None:
             for (i, tp) in enumerate(self.time_points):
                 tp = np.array(tp, np.float32)
                 indices = np.argsort(tp)
                 time_points[i] = tp[indices]
-                expr_data = self.ts_data[i]
-                self.ts_data[i] = expr_data[indices, :]
+                self.ts_data[i] = self.ts_data[i][indices, :]
 
     def process_time_series(self, input_idx: np.ndarray, target_gene: int, h: int = 1) -> Tuple[np.ndarray, np.ndarray]:
         """ Reformat data for time series analysis
@@ -98,20 +101,23 @@ class Data:
         # Time-series data
         X = np.zeros((nsamples_time - h * nexp, ninputs))
         y = []
+        offset = 0
         for (i, exp_timeseries) in enumerate(self.ts_data):
             exp_time_points = self.time_points[i]
+            assert len(exp_timeseries) == len(exp_time_points)
             n_time = exp_timeseries.shape[0]
-            exp_time_diff = exp_time_points[h:] - exp_time_points[:n_time - h]
-            exp_timeseries_x = exp_timeseries[:n_time - h, input_idx]
-            # current_timeseries_output = (exp_timeseries[h:,i_gene] - exp_timeseries[:n_time-h,i_gene]) / exp_time_diff + decay_coeffs[i_gene]*exp_timeseries[:n_time-h,i_gene]
-            for ii in range(len(exp_time_diff)):
-                f_dy_dt = lambda decay_coeff_i, i=i, ii=ii, i_gene=target_gene: float(
-                    (self.ts_data[i][ii + 1:ii + 2, i_gene] - self.ts_data[i][ii:ii + 1, i_gene]) / exp_time_diff[
-                        ii] + decay_coeff_i * self.ts_data[i][ii:ii + 1, i_gene])
-                y.append(f_dy_dt)
 
-            exp_n_samples = exp_timeseries_x.shape[0]
-            X[i * exp_n_samples:(i + 1) * exp_n_samples, :] = exp_timeseries_x
+            # TODO: computationally slow
+            for ii in range(n_time - h):
+                y1 = self.ts_data[i][ii, target_gene]
+                y2 = self.ts_data[i][ii + h, target_gene]
+                t1 = exp_time_points[ii]
+                t2 = exp_time_points[ii + h]
+                der = (y2 - y1) / (t2 - t1)
+                y.append(lambda decay_coef, der=der, y1=y1: float(der + decay_coef * y1))
+
+            X[offset:offset+n_time-h, :] = exp_timeseries[:n_time-h, input_idx]
+            offset += n_time - h
         y = np.asarray(y)
         return X, y
 
@@ -147,20 +153,6 @@ class Data:
         For time series data, TS_data should be in n_exp*n_time*n_genes format. For For static analysis,
         SS_data should be in n_samples * n_genes.
         """
-        # Check input arguments
-        # TODO: useless
-        dynamic_flag = False
-        static_flag = False
-        if self.ts_data is not None:
-            dynamic_flag = True
-        if self.ts_data is not None:
-            static_flag = True
-        # if dynamic_flag and not isinstance(TS_data,(list,tuple)):
-        #     raise ValueError('TS_data must be a list of lists')
-        # if static_flag and not isinstance(SS_data,(list,tuple)):
-        #     raise ValueError('SS_data must be a list of list')
-
-        # TODO: check the inputs
 
         # TODO: add KO to time series data
 
@@ -170,7 +162,7 @@ class Data:
         #    input_idx.remove(self.ko_indices[i_gene])
         # except UnboundLocalError:
         #    pass
-        input_idx = np.where(self.is_regulator[:, i_gene])
+        input_idx = np.where(self.is_regulator[:, i_gene])[0]
 
         X, y = [], []
         if self.ts_data is not None:

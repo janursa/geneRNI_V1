@@ -23,7 +23,7 @@ from geneRNI.data import Data
 from geneRNI.links import format_links
 from geneRNI.models import get_estimator_wrapper
 
-from geneRNI.utils import is_lambda_function, verbose_print
+from geneRNI.utils import is_lambda_function, verbose_print, preprocess_target
 from geneRNI.grn.correction import correct_grn_matrix
 
 dir_main = os.path.join(pathlib.Path(__file__).parent.resolve(), '..')
@@ -136,16 +136,8 @@ class GeneEstimator(base.RegressorMixin):
         # estimators also need to declare any non-optional parameters to __init__ in the
         # self._required_parameters = ('allow_nan')
 
-    def preprocess_target(self, y: np.ndarray):
-        new_y = np.empty(len(y), dtype=float)
-        for i in range(len(y)):
-            if is_lambda_function(y[i]):
-                new_y[i] = float(y[i](self.decay_coeff))
-            else:
-                new_y[i] = float(y[i])
-        sklearn.utils.indexable(new_y)
-        sklearn.utils.assert_all_finite(new_y)
-        return new_y
+    def preprocess_target(self, y: np.ndarray) -> np.ndarray:
+        return preprocess_target(y, self.decay_coeff)
 
     def fit(self, X: np.ndarray, y: np.ndarray) -> 'GeneEstimator':
         """ fit X to y
