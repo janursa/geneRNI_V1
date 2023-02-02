@@ -105,7 +105,7 @@ def grid_search_single_permut(
 
 
 def map_gene(args) -> Tuple[int, List[float]]:
-    """ maps the args to the grid search function for single target, used for multi threating """
+    """ maps the args to the grid search function for single target (gene), containing all permuts, used for multi threating """
     i = args['i']  # index of each target
     args['X'], args['y'] = args['data'][i]
     del args['data']
@@ -115,10 +115,8 @@ def map_gene(args) -> Tuple[int, List[float]]:
 
 
 def map_permut(args) -> Tuple[int, List[float]]:
-    """ maps the args to the grid search function for single permutation of param, used for multi-threading """
+    """ maps the args to the grid search function for single permutation of param, containing all genes, used for multi-threading """
     i = args['i']  # index of each permutation
-    args['X'], args['y'] = args['data'][i]
-    del args['data']
     args_rest = {key: value for key, value in args.items() if key != 'i'}
     return i, grid_search_single_permut(**args_rest)
 
@@ -150,8 +148,12 @@ def run(data: Data, param: dict, permts: list, n_jobs: int, **specs):
                 testscores[i_gene] = testscores_node
         else:  # when there is more permuts
             print('Permutation-based multi threading')
-
-            input_data = [{'i': i, 'data': data, 'param': param, 'permt': permts[i], **specs} for i in range(len(permts))]
+            Xs, ys = [], []
+            for i in range(n_genes):
+                X, y = data[i]
+                Xs.append(X)
+                ys.append(y)
+            input_data = [{'i': i, 'Xs': Xs, 'ys':ys, 'param': param, 'permt': permts[i], **specs} for i in range(len(permts))]
             all_output = pool.map(map_permut, input_data)
             
             all_output.sort(key=lambda x: x[0])

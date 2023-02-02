@@ -163,7 +163,6 @@ class Data:
         # except UnboundLocalError:
         #    pass
         input_idx = np.where(self.is_regulator[:, i_gene])[0]
-
         X, y = [], []
         if self.ts_data is not None:
             X_d, y_d = self.process_time_series(input_idx, i_gene, h=self.h)
