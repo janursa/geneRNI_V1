@@ -84,11 +84,13 @@ def network_inference(
 
         # Actual network inference, using all the available data
         ests[i].fit(X, y)
-        
         links.append(ests[i].compute_feature_importances())
-    links = np.asarray(links)
+    #- from n_gene*n_gene-1 matrix to n_gene*n_gene matrix
+    for i in range(len(links)):
+        links[i] = np.insert(links[i], i, 0)
 
-    # Normalization of the GRN adjacency matrix
+    links = np.asarray(links)
+    #- Normalization of the GRN adjacency matrix
     if grn_normalization:
         links = np.abs(links)
         sums_ = np.sum(links, axis=0)
