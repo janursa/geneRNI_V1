@@ -115,11 +115,12 @@ def to_matrix(df: pd.DataFrame) -> np.ndarray:
 
 def calculate_auc_roc(links: pd.DataFrame, golden_links: pd.DataFrame) -> float:
     scores = to_matrix(links)
-    np.asarray(scores).tofile('mat.csv')
     tests = to_matrix(golden_links)
     mask = ~np.isnan(tests)
     scores, tests = scores[mask], tests[mask]
     return metrics.roc_auc_score(tests, scores)
+
+
 
 def calculate_PR(links: pd.DataFrame, golden_links: pd.DataFrame) -> float:
     """ Compute precision recall
@@ -149,6 +150,23 @@ def precision_recall_curve(links: pd.DataFrame, golden_links: pd.DataFrame) -> T
     mask = ~np.isnan(tests)
     scores, tests = scores[mask], tests[mask]
     return metrics.precision_recall_curve(tests, scores)
+def roc_curve(links: pd.DataFrame, golden_links: pd.DataFrame) -> Tuple[List, List, List]:
+    """ Compute Receiver operating characteristic (ROC).
+
+    links -- sorted links as G1->G2, in a df format
+    golden_links -- sorted golden links as G1->G2, in a df format
+
+    outputs: 
+        fdr: array
+        tpr: array
+        threshold: array
+    """
+    links.to_csv('test.csv')
+    scores = to_matrix(links)
+    tests =  to_matrix(golden_links)
+    mask = ~np.isnan(tests)
+    scores, tests = scores[mask], tests[mask]
+    return metrics.roc_curve(tests, scores)
 
 def PR_curve_gene(gene_names, recall, precision, average_precision):
     """ Plots PR curve for the given genes as well as the average PR combining all genes """

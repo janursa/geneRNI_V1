@@ -11,14 +11,8 @@ pd.options.mode.chained_assignment = None
 
 
 def format_links(
-            links,
-            gene_names,
-            regulators='all',
-            KO=None,  # TODO: unused
-            regulator_tag='Regulator',
-            target_tag='Target',
-            weight_tag='Weight',
-            sign_tag='Sign'
+            links_matrix,
+            gene_names
     ):
 
     """Gets the regulatory links in a matrix ({gene1-gene1, gene1-gene2, ...; gene2-gene1, gene2-gene2, etc}) converts it to a df.
@@ -41,42 +35,23 @@ def format_links(
         Regulator   Target     Weight    Sign
     """
 
-    # Check input arguments     
-    VIM = np.array(links)
-    # if not isinstance(VIM,ndarray):
-    #     raise ValueError('VIM must be a square array')
-    # elif VIM.shape[0] != VIM.shape[1]:
-    #     raise ValueError('VIM must be a square array')
-
-    ngenes = VIM.shape[0]
-
-    nTFs = ngenes
-
-    # remove gene to itself regulatory score
-    i_j_links = [(i, j, score) for (i, j), score in np.ndenumerate(VIM) if i != j]
-    # Rank the list according to the weights of the edges    
-    i_j_links_sort = sorted(i_j_links, key=operator.itemgetter(2), reverse=True)
-    nToWrite = len(i_j_links_sort)
+    # reformat to i to j score. no gene to itself regulatory score
+    i_j_links = [(i, j, score) for (i, j), score in np.ndenumerate(links_matrix) if i != j]
 
     # Write the ranked list of edges
     regs = []
     targs = []
     scores = []
-    for i in range(nToWrite):
-        (TF_idx, target_idx, score) = i_j_links_sort[i]
-        TF_idx = int(TF_idx)
-        target_idx = int(target_idx)
-        regs.append(gene_names[TF_idx])
-        # print(gene_names)
+    for i in range(len(i_j_links)):
+        (regulator_idx, target_idx, score) = i_j_links[i]
+        regs.append(gene_names[regulator_idx])
         targs.append(gene_names[target_idx])
         scores.append(score)
 
     df = pd.DataFrame()
-    df[regulator_tag] = regs
-    df[target_tag] = targs
-    df[weight_tag] = scores
-    df[sign_tag] = ''
-    df = sort_links(df, gene_names)
+    df['Regulator'] = regs
+    df['Target'] = targs
+    df['Weight'] = scores
     return df
 
 

@@ -63,7 +63,7 @@ def network_inference(
     else: 
         ests = [GeneEstimator(**{**param, **param_unique[i]}) for i in range(n_genes)]
 
-    links = []
+    links_matrix = []
     train_scores, test_scores, oob_scores = [], [], []
     for i in range(n_genes):
         X, y = data[i]
@@ -84,19 +84,19 @@ def network_inference(
 
         # Actual network inference, using all the available data
         ests[i].fit(X, y)
-        links.append(ests[i].compute_feature_importances())
+        links_matrix.append(ests[i].compute_feature_importances())
     #- from n_gene*n_gene-1 matrix to n_gene*n_gene matrix
-    for i in range(len(links)):
-        links[i] = np.insert(links[i], i, 0)
+    for i in range(len(links_matrix)):
+        links_matrix[i] = np.insert(links_matrix[i], i, 0.0)
 
-    links = np.asarray(links)
+    links_matrix = np.asarray(links_matrix)
     #- Normalization of the GRN adjacency matrix
-    if grn_normalization:
-        links = np.abs(links)
-        sums_ = np.sum(links, axis=0)
-        mask = (sums_ > 0)
-        links[:, mask] /= sums_[np.newaxis, mask]
-    links = correct_grn_matrix(links, method=grn_correction)
+    # if grn_normalization:
+    #     links_matrix = np.abs(links_matrix)
+    #     sums_ = np.sum(links_matrix, axis=0)
+    #     mask = (sums_ > 0)
+    #     links_matrix[:, mask] /= sums_[np.newaxis, mask]
+    # links_matrix = correct_grn_matrix(links_matrix, method=grn_correction)
 
     # Show scores
     verbose_print(verbose, f'\nnetwork inference: train score, mean: {np.mean(train_scores)} std: {np.std(train_scores)}')
@@ -110,9 +110,7 @@ def network_inference(
             f'network inference: oob score (only RF), mean: {np.mean(oob_scores)} std: {np.std(oob_scores)}')
 
     # Save predicted regulatory relations
-    links_df = format_links(links, gene_names)
-    if output_dir is not None:
-        links_df.to_csv(os.path.join(output_dir, 'links.txt'))
+    links_df = format_links(links_matrix, gene_names)
 
     return ests, train_scores, links_df, oob_scores, test_scores
 
