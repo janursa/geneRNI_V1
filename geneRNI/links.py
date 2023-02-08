@@ -67,6 +67,7 @@ def format_links(
         TF_idx = int(TF_idx)
         target_idx = int(target_idx)
         regs.append(gene_names[TF_idx])
+        # print(gene_names)
         targs.append(gene_names[target_idx])
         scores.append(score)
 

@@ -5,12 +5,13 @@ import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
 from sklearn import metrics
+from typing import Tuple, List
 
 
 
 """Goodness of fit"""
 
-@staticmethod
+
 def boxplot_scores_groupOfgroup(scores_stack_stack, tags=None, titles=None):
     """plots scores as a box plot for a group of groups (e.g. size*network)"""
     n = len(scores_stack_stack)
@@ -29,7 +30,6 @@ def boxplot_scores_groupOfgroup(scores_stack_stack, tags=None, titles=None):
             ax.set_xticks(range(1, len(tags) + 1))
             ax.set_xticklabels(tags)
 
-@staticmethod
 def boxplot_scores_group(scores_stack, tags=None, title=None, xlabel=''):
     """plots scores as a box plot for a set"""
     fig, ax = plt.subplots(1, 1, tight_layout=True)
@@ -41,7 +41,6 @@ def boxplot_scores_group(scores_stack, tags=None, title=None, xlabel=''):
         ax.set_xticks(range(1, len(tags) + 1))
         ax.set_xticklabels(tags)
 
-@staticmethod
 def boxplot_scores_single(scores):
     """plots scores as a box plot"""
     fig, ax = plt.subplots(1, 1, tight_layout=True)
@@ -50,7 +49,6 @@ def boxplot_scores_single(scores):
     ax.set_title('Best scores distribution')
     ax.set_xticklabels([])
 
-@staticmethod
 def boxplot_params(best_params, priors=None, samples=None):
     """plots the results of grid search"""
     # TODO: check the inputs: samples should have the same keys as priors, best_params
@@ -82,7 +80,6 @@ def boxplot_params(best_params, priors=None, samples=None):
         for i, (key, values) in enumerate(samples_n.items(), 1):
             axs[0].scatter([i for j in range(len(values))], values)
 
-@staticmethod
 def barplot_PR_group(PR_stack, tags=None, title=None, xlabel=''):
     """Plot the values of PR for each network"""
     fig, ax = plt.subplots(1, 1, tight_layout=True)
@@ -94,7 +91,6 @@ def barplot_PR_group(PR_stack, tags=None, title=None, xlabel=''):
         ax.set_xticks(range(1, len(tags) + 1))
         ax.set_xticklabels(tags)
 
-@staticmethod
 def barplot_PR_groupOfgroup(PR_stack_stack, tags=None, titles=None, xlabel='Network'):
     """plots PR as a bar plot for a group of groups (e.g. size*network)"""
     n = len(PR_stack_stack)
@@ -113,38 +109,47 @@ def barplot_PR_groupOfgroup(PR_stack_stack, tags=None, titles=None, xlabel='Netw
             ax.set_xticks(range(1, len(tags) + 1))
             ax.set_xticklabels(tags)
 
-@staticmethod
-def to_matrix(df: pd.DataFrame, gene_names: List[str]) -> np.ndarray:
-    mapping = {gene_name: i for i, gene_name in enumerate(gene_names)}
-    mat = np.full((len(gene_names), len(gene_names)), np.nan, dtype=float)
-    idx_i = np.asarray([mapping[x] for x in df['Regulator'].tolist()], dtype=int)
-    idx_j = np.asarray([mapping[x] for x in df['Target'].tolist()], dtype=int)
-    weights = df['Weight'].to_numpy(dtype=float)
-    mat[idx_i, idx_j] = weights
-    return mat
+def to_matrix(df: pd.DataFrame) -> np.ndarray:
+    
+    return df.pivot(index='Regulator', columns='Target', values='Weight').fillna(0).values
 
-@staticmethod
-def calculate_auc_roc(gene_names: List[str], links: pd.DataFrame, golden_links: pd.DataFrame) -> float:
-    scores = evaluation.to_matrix(links, gene_names)
-    tests = evaluation.to_matrix(golden_links, gene_names)
+def calculate_auc_roc(links: pd.DataFrame, golden_links: pd.DataFrame) -> float:
+    scores = to_matrix(links)
+    np.asarray(scores).tofile('mat.csv')
+    tests = to_matrix(golden_links)
     mask = ~np.isnan(tests)
     scores, tests = scores[mask], tests[mask]
     return metrics.roc_auc_score(tests, scores)
 
-@staticmethod
-def calculate_PR(gene_names: List[str], links: pd.DataFrame, golden_links: pd.DataFrame) -> float:
+def calculate_PR(links: pd.DataFrame, golden_links: pd.DataFrame) -> float:
     """ Compute precision recall
 
     links -- sorted links as G1->G2, in a df format
     golden_links -- sorted golden links as G1->G2, in a df format
     """
-    scores = evaluation.to_matrix(links, gene_names)
-    tests = evaluation.to_matrix(golden_links, gene_names)
+    scores = to_matrix(links)
+    tests = to_matrix(golden_links)
     mask = ~np.isnan(tests)
     scores, tests = scores[mask], tests[mask]
     return metrics.average_precision_score(tests, scores)
+def precision_recall_curve(links: pd.DataFrame, golden_links: pd.DataFrame) -> Tuple[List, List, List]:
+    """ Compute precision recall array with differnent thresholds
 
-@staticmethod
+    links -- sorted links as G1->G2, in a df format
+    golden_links -- sorted golden links as G1->G2, in a df format
+
+    outputs: 
+        precision: array
+        recall: array
+        threshold: array
+    """
+    links.to_csv('test.csv')
+    scores = to_matrix(links)
+    tests =  to_matrix(golden_links)
+    mask = ~np.isnan(tests)
+    scores, tests = scores[mask], tests[mask]
+    return metrics.precision_recall_curve(tests, scores)
+
 def PR_curve_gene(gene_names, recall, precision, average_precision):
     """ Plots PR curve for the given genes as well as the average PR combining all genes """
     colors = itertools.cycle(["navy", "turquoise", "darkorange", "cornflowerblue", "teal"])
@@ -186,7 +191,6 @@ def PR_curve_gene(gene_names, recall, precision, average_precision):
 
     plt.show()
 
-@staticmethod
 def PR_curve_average(recall, precision, average_precision):
     """ Plots average precison recall curve """
     display = metrics.PrecisionRecallDisplay(
