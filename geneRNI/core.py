@@ -47,7 +47,7 @@ def network_inference(
         param_unique=None,
         grn_normalization: bool = True,
         grn_correction: str = 'none',
-        verbose=True,
+        verbose=False,
         test_size=0,
         output_dir=''
 ):
@@ -89,14 +89,18 @@ def network_inference(
     for i in range(len(links_matrix)):
         links_matrix[i] = np.insert(links_matrix[i], i, 0.0)
 
-    links_matrix = np.asarray(links_matrix)
-    #- Normalization of the GRN adjacency matrix
+    links_matrix = np.asarray(links_matrix).T
+    #- Normalization of the 6
     # if grn_normalization:
     #     links_matrix = np.abs(links_matrix)
     #     sums_ = np.sum(links_matrix, axis=0)
     #     mask = (sums_ > 0)
     #     links_matrix[:, mask] /= sums_[np.newaxis, mask]
     # links_matrix = correct_grn_matrix(links_matrix, method=grn_correction)
+
+    # print('PS:', np.sum(links_matrix[:,0]), np.sum(links_matrix[:,1]))
+    # print('AS:', np.sum(links_matrix[0,:]), np.sum(links_matrix[1,:]))
+    
 
     # Show scores
     verbose_print(verbose, f'\nnetwork inference: train score, mean: {np.mean(train_scores)} std: {np.std(train_scores)}')
@@ -111,6 +115,14 @@ def network_inference(
 
     # Save predicted regulatory relations
     links_df = format_links(links_matrix, gene_names)
+
+    # AS = np.asarray([sum(links_df.loc[links_df['Regulator']==gene,:]['Weight']) for gene in gene_names[0:2]])
+    # PS = np.asarray([sum(links_df.loc[links_df['Target']==gene,:]['Weight']) for gene in gene_names[0:2]])
+
+    # print('PS:', PS)
+    # print('AS:', AS)
+    # aa
+
 
     return ests, train_scores, links_df, oob_scores, test_scores
 

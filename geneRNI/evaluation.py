@@ -133,18 +133,21 @@ def calculate_PR(links: pd.DataFrame, golden_links: pd.DataFrame) -> float:
     mask = ~np.isnan(tests)
     scores, tests = scores[mask], tests[mask]
     return metrics.average_precision_score(tests, scores)
-def precision_recall_curve(links: pd.DataFrame, golden_links: pd.DataFrame) -> Tuple[List, List, List]:
+def precision_recall_curve(links: pd.DataFrame, golden_links: pd.DataFrame, filter_mask: List=None) -> Tuple[List, List, List]:
     """ Compute precision recall array with differnent thresholds
 
     links -- sorted links as G1->G2, in a df format
     golden_links -- sorted golden links as G1->G2, in a df format
+    filter_mask -- a list of bool showing which links to retain for the comparision
 
     outputs: 
         precision: array
         recall: array
         threshold: array
     """
-    links.to_csv('test.csv')
+    if filter_mask is not None:
+        links = links.loc[filter_mask,:].reset_index(drop=True)
+        golden_links = golden_links.loc[filter_mask,:].reset_index(drop=True)
     scores = to_matrix(links)
     tests =  to_matrix(golden_links)
     mask = ~np.isnan(tests)
