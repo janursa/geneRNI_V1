@@ -26,7 +26,8 @@ from geneRNI.models import get_estimator_wrapper
 from geneRNI.utils import is_lambda_function, verbose_print, preprocess_target
 from geneRNI.grn.correction import correct_grn_matrix
 
-dir_main = os.path.join(pathlib.Path(__file__).parent.resolve(), '..')
+dir_main = os.path.join(str(pathlib.Path(__file__).parent.resolve()), '..')
+
 sys.path.insert(0, dir_main)  # TODO: not recommended (let's make a setup.py file instead)
 
 
